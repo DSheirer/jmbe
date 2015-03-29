@@ -1,0 +1,84 @@
+<project name="jmbe" default="library" basedir=".">
+  <description>
+    Ant build script for the java Multi-Band Excitation (jmbe) decoder library
+  </description>
+
+  <!-- version properties -->
+  <property name="major" value="0"/>
+  <property name="minor" value="1"/>
+  <property name="build" value="0"/>
+  
+  <!-- build properties -->
+  <property name="root" location=".."/>
+  <property name="classes" location="../classes"/>
+  <property name="library"  location="../library"/>
+  <property name="libs"  location="../imports"/>
+  <property name="license"  location="../license"/>
+  <property name="meta"  location="../META-INF"/>
+  <property name="src" location="../src"/>
+
+  <path id="classpath">
+    <fileset dir="${libs}" includes="*.jar" />
+  </path>
+
+  <target name="clean" description="Clean previous build artifacts" >
+    <!-- Delete the ${classes} and ${product} directory trees -->
+    <delete dir="${classes}"/>
+    <delete dir="${library}"/>
+  </target>
+
+  <target name="init">
+    <!-- Create the classes folder to contain the compiled java classes -->
+    <mkdir dir="${classes}"/>
+    <mkdir dir="${library}"/>
+  </target>
+
+  <target name="compile" depends="clean,init" description="Compile java classes" >
+    <!-- Compile the java code from ${src} into ${classes} -->
+    <javac srcdir="${src}" destdir="${classes}" classpathref="classpath" 
+    				includeantruntime="false" />
+  </target>
+  
+  <target name="library" depends="compile" description="Create jbme library - no third party libraries" >
+    <jar jarfile="${library}/jmbe-${major}.${minor}.${build}.jar" basedir="${classes}">
+	  <manifest>
+        <attribute name="Title" 
+        	value="Java Multi-Band Excitation Decoder Library"/>
+        <attribute name="Version" value="${major}.${minor}.${build}"/>
+        <attribute name="Site" value="https://github.com/DSheirer/jmbe"/>
+      </manifest>
+
+      <!-- Service Provider Interface entries -->
+      <service type="javax.sound.sampled.spi.FormatConversionProvider">
+        <provider classname="jmbe.audio.imbe.IMBEAudioConverter"/>
+      </service>
+	  
+  	  <fileset dir="${license}">
+  	  	<include name="license.txt"/>
+  	  </fileset>
+    </jar>
+  </target>
+
+  <target name="library-complete" depends="compile" description="Create jbme library including third-party libararies" >
+    <jar jarfile="${library}/jmbe-${major}.${minor}.${build}.jar" basedir="${classes}">
+	  <manifest>
+        <attribute name="Title" 
+        	value="Java Multi-Band Excitation Decoder Library"/>
+        <attribute name="Version" value="${major}.${minor}.${build}"/>
+        <attribute name="Site" value="https://github.com/DSheirer/jmbe"/>
+      </manifest>
+
+      <!-- Service Provider Interface entries -->
+      <service type="javax.sound.sampled.spi.FormatConversionProvider">
+        <provider classname="jmbe.audio.imbe.IMBEAudioConverter"/>
+      </service>
+	  
+  	  <fileset dir="${license}">
+  	  	<include name="license.txt"/>
+  	  </fileset>
+      <!-- Copy third-party libraries -->
+      <fileset dir="${libs}" includes="*.jar" />
+    </jar>
+  </target>
+
+</project>
