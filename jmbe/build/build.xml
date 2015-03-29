@@ -13,7 +13,6 @@
   <property name="classes" location="../classes"/>
   <property name="library"  location="../library"/>
   <property name="libs"  location="../imports"/>
-  <property name="license"  location="../license"/>
   <property name="meta"  location="../META-INF"/>
   <property name="src" location="../src"/>
 
@@ -53,8 +52,10 @@
         <provider classname="jmbe.audio.imbe.IMBEAudioConverter"/>
       </service>
 	  
-  	  <fileset dir="${license}">
-  	  	<include name="license.txt"/>
+  	  <fileset dir="${root}">
+  	  	<include name="LICENSE"/>
+  	  	<include name="README.md"/>
+  	  	<include name="CHANGELOG"/>
   	  </fileset>
     </jar>
   </target>
