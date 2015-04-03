@@ -1,2 +1,5 @@
+0.1.1 20150403 Removes JTransforms library and resolves issues with audio
+      quality
+
 0.1.0 20150329 Initial version
-      Supports decoding IMBE encoded audio frames used for P25 Phase 1
+      Supports decoding IMBE encoded audio frames used for P25 Phase 1   

@@ -67,6 +67,8 @@ public class IMBEConverterAudioInputStream extends AudioInputStream
 			{
 				IMBEFrame imbe = new IMBEFrame( frame, mPreviousFrame );
 				
+				mPreviousFrame = imbe;
+				
 				mBuffer = mSynthesizer.getAudio( imbe );
 			}
 			else

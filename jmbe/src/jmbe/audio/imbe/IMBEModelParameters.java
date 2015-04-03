@@ -1,8 +1,12 @@
 package jmbe.audio.imbe;
 
+import java.text.DecimalFormat;
 import java.util.Arrays;
 
 import jmbe.audio.imbe.IMBEFrame.FundamentalFrequency;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*******************************************************************************
  *     jmbe - Java MBE Library 
@@ -25,6 +29,11 @@ import jmbe.audio.imbe.IMBEFrame.FundamentalFrequency;
 
 public class IMBEModelParameters
 {
+	private final static Logger mLog = 
+			LoggerFactory.getLogger( IMBEModelParameters.class );
+	
+	private static final int MAX_HEADROOM_THRESHOLD = 3;
+	
 	private FundamentalFrequency mFundamentalFrequency;
 	
 	private boolean[] mVoicingDecisions;
@@ -113,17 +122,40 @@ public class IMBEModelParameters
 	 */
 	public void copy( IMBEModelParameters previous )
 	{
-		mEnhancedSpectralAmplitudes = previous.getEnhancedSpectralAmplitudes();
-		mLog2SpectralAmplitudes = previous.getLog2SpectralAmplitudes();
-		mFundamentalFrequency = previous.getFundamentalFrequency();
-		mSpectralAmplitudes = previous.getSpectralAmplitudes();
-		mVoicingDecisions = previous.getVoicingDecisions();
-		
-		/* Increment the previous repeat count to indicate that this frame
-		 * is a repeat, in addition to any previously repeated frames */
-		mRepeatCount = previous.getRepeatCount() + 1;
-		
-		/* Don't copy the error counts */
+		/* Avoid continuously repeating speech sounds - reset to defaults */
+		if( previous.getRepeatCount() > MAX_HEADROOM_THRESHOLD )
+		{
+			mFundamentalFrequency = FundamentalFrequency.W_DEFAULT;
+			int lplus1 = mFundamentalFrequency.getL() + 1;
+			
+			mEnhancedSpectralAmplitudes = new double[ lplus1 ];
+			mLog2SpectralAmplitudes = new double[ lplus1 ];
+			mSpectralAmplitudes = new double[ lplus1 ];
+			mVoicingDecisions = new boolean[ lplus1 ];
+			
+			for( int x = 0; x < lplus1; x++ )
+			{
+				mSpectralAmplitudes[ x ] = 1.0d;
+			}
+		}
+		else
+		{
+			mEnhancedSpectralAmplitudes = previous.getEnhancedSpectralAmplitudes();
+			mLog2SpectralAmplitudes = previous.getLog2SpectralAmplitudes();
+			mFundamentalFrequency = previous.getFundamentalFrequency();
+			mSpectralAmplitudes = previous.getSpectralAmplitudes();
+			mVoicingDecisions = previous.getVoicingDecisions();
+			mAmplitudeThreshold = previous.getAmplitudeThreshold();
+			mErrorCountCoset0 = previous.getErrorCountCoset0();
+			mErrorCountCoset4 = previous.getErrorCountCoset4();
+			mErrorCountTotal = previous.getErrorCountTotal();
+			mErrorRate = previous.getErrorRate();
+			mLocalEnergy = previous.getLocalEnergy();
+			
+			/* Increment the previous repeat count to indicate that this frame
+			 * is a repeat, in addition to any previously repeated frames */
+			mRepeatCount = previous.getRepeatCount() + 1;
+		}
 	}
 	
 	/**

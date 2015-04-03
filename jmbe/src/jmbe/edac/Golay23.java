@@ -146,12 +146,21 @@ public class Golay23
 	
 	public static void main( String[] args )
 	{
-		BinaryFrame frame = BinaryFrame.load( "00000100000011011001100" );
-		
-		System.out.println( "FRAME: " + frame.toString() );
-		
-		int errors = checkAndCorrect( frame, 0 );
-		
-		System.out.println( "FIXED: " + frame.toString() + " Errors: " + errors );
+		for( int x = 0; x < 0x7FFFFF; x++ )
+		{
+			BinaryFrame frame = new BinaryFrame( 23 );
+
+			frame.load( 0, 23, x );
+			
+			int errors = checkAndCorrect( frame, 0 );
+			
+			System.out.println( "x:" + x + " errors:" + errors );
+			
+			if( errors == 4 )
+			{
+				System.out.println( "Value " + x + " has 4 bit errors" );
+				return;
+			}
+		}
 	}
 }

@@ -5,7 +5,8 @@ import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Random;
 
-import org.jtransforms.fft.DoubleFFT_1D;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*******************************************************************************
  *     jmbe - Java MBE Library 
@@ -27,7 +28,12 @@ import org.jtransforms.fft.DoubleFFT_1D;
 
 public class IMBESynthesizer
 {
+	private final static Logger mLog = 
+			LoggerFactory.getLogger( IMBESynthesizer.class );
+
 	public static final double TWO_PI = Math.PI * 2.0;
+	public static final double TWOPI_OVER_256 = 2.0 * Math.PI / 256.0;
+	public static final double SCALE_256 = 1.0 / 256.0;
 
 	/* Algorithm 121 - create scaling coefficient (yw) from synthesis window (ws) 
 	 * and the initial pitch refinement window (wr) 
@@ -51,8 +57,6 @@ public class IMBESynthesizer
 	private WhiteNoiseGenerator mWhiteNoise = new WhiteNoiseGenerator();
 	
 	private RandomTwoPiGenerator mRandom2PI = new RandomTwoPiGenerator();
-
-	private static final DoubleFFT_1D mDFT = new DoubleFFT_1D( 256 );
 
 	private IMBEFrame mPreviousFrame = IMBEFrame.getDefault();
 
@@ -90,11 +94,14 @@ public class IMBESynthesizer
 		
 		double[] voiced = getVoiced( frame );
 		
+		double voicedGain = 1.0d;
+		double unvoicedGain = 1.0d;
+
 		/* Algorithm #142 - combine voiced and unvoiced audio samples to form
 		 * the completed audio samples. */
 		for( int x = 0; x < 160; x++ )
 		{
-			shortBuffer.put( (short)( voiced[ x ] + unvoiced[ x ] ) );
+			shortBuffer.put( (short)( voicedGain * voiced[ x ] + unvoicedGain * unvoiced[ x ] ) );
 		}
 
 		mPreviousFrame = frame;
@@ -114,13 +121,6 @@ public class IMBESynthesizer
 	{
 		double[] samples = mWhiteNoise.getWindowedSamples();
 
-		/* Algorithm #118 - perform 256-point DFT against samples. JTransforms
-		 * leaves the 0 to 127 bins in the even indexes and the -1 to -127 bins
-		 * in the odd indexes. */
-		mDFT.realForward( samples );
-		
-		/* Note: samples refers to the DFT bins from this point forward */
-		
 		/* Algorithm #122 and #123 - generate the 256 FFT bins to L frequency 
 		 * band mapping from the fundamental frequency */
 		int[] fftBinLBandMap = frame.getModelParameters()
@@ -130,14 +130,41 @@ public class IMBESynthesizer
 
 		double[] amplitudes = frame.getModelParameters()
 				.getEnhancedSpectralAmplitudes();
+
 		int[] a_min = frame.getModelParameters()
 				.getFundamentalFrequency().getLBandFFTBinMinimums();
+
 		int[] b_max = frame.getModelParameters()
 				.getFundamentalFrequency().getLBandFFTBinMaximums();
 
-		/* Algorithm #119 and #124 - zeroize the voiced frequency bins and
-		 * all of the lowest and highest frequency bins -- this is already
-		 * taken care of since Uw is initialized to all zeros */
+
+		/* Algorithm #118 - perform 256-point DFT against samples.
+		 * Algorithm #119 and #124 - zeroize the voiced frequency bins and
+		 * all of the lowest and highest frequency bins -- we do this by not
+		 * calculating the DFT for the corresponding frequency bins that match
+		 * these high/low and voiced l bands. */
+		double dftUw[] = new double[ 256 ];
+		
+		for( int y = 0; y < 256; y++ )
+		{
+			/* Only calculate if this is an unvoiced band DFT frequency bin */
+			
+			int band = fftBinLBandMap[ y ];
+			
+			if( band != 0 && !voicedBands[ band ] )
+			{
+				double m2PiOver256 = TWOPI_OVER_256 * (double)( y - 128 );
+				
+				for( int x = 0; x < 209; x++ )
+				{
+					double n = (double)( x - 104 );
+					
+					dftUw[ y ] += ( ( samples[ x ] * Math.cos( m2PiOver256 * (double)n ) ) -
+								    ( samples[ x ] * Math.sin( m2PiOver256 * (double)n ) ) );
+				}
+			}
+		}
+		
 		double[] Uw = new double[ 256 ];
 
 		for( int bin = 0; bin < 256; bin++ )
@@ -149,23 +176,42 @@ public class IMBESynthesizer
 			{
 				double numerator = 0.0;
 
-				for( int y = a_min[ band ]; y <= b_max[ band ] - 1; y++ )
+				for( int y = a_min[ band ]; y < b_max[ band ]; y++ )
 				{
-					numerator += ( samples[ y ] * samples[ y ] );
+					int index = ( y < 128 ) ? 128 - y : y + 128;
+					double value = dftUw[ index ];
+					numerator += ( value * value );
 				}
-				
+
 				double denominator = (double)( b_max[ band ] - a_min[ band ] );
+
 				
 				double scaling_denominator = Math.pow( ( numerator / denominator ), 0.5 );
+
 				
 				Uw[ bin ] = ( UNVOICED_SCALING_COEFFICIENT * amplitudes[ band ] * 
-						samples[ bin ] ) / scaling_denominator;
+						dftUw[ bin ] ) / scaling_denominator;
 			}
 		}
+		
+		/* Algorithm #125 - inverse DFT of scaled unvoiced and zeroized voiced 
+		 * dft frequency bins from the white noise */
+		double[] uw = new double[ 256 ];
 
-		/* Algorithm #125 - inverse DFT of scaled and zeroized unvoiced white
-		 * noise frequency bins */
-		mDFT.realInverse( Uw, true );
+		for( int x = 0; x < 256; x++ )
+		{
+			double n2PiOver256 = TWOPI_OVER_256 * (double)( x - 128 );
+			
+			for( int y = 0; y < 256; y++ )
+			{
+				double m = (double)( y - 128 );
+				
+				uw[ x ] += ( ( Uw[ y ] * Math.cos( n2PiOver256 * (double)m ) ) +
+						     ( Uw[ y ] * Math.sin( n2PiOver256 * (double)m ) ) );
+			}
+			
+			uw[ x ] *= SCALE_256;
+		}
 		
 		/* Algorithm #126 - use Weighted Overlap Add algorithm to combine previous 
 		 * Uw and the current Uw inverse DFT results to form final unvoiced set */
@@ -177,32 +223,27 @@ public class IMBESynthesizer
 			double winInverse = synthesisWindow( n - 160 );
 			
 			unvoiced[ n ] = ( ( win * translateUw( n, mPreviousUw ) ) +
-				  ( winInverse * translateUw( n - 160, Uw ) ) ) /
+				  ( winInverse * translateUw( n - 160, uw ) ) ) /
 				  ( ( win * win ) + ( winInverse * winInverse ) );
 		}
 		
-		mPreviousUw = Uw;
+		mPreviousUw = uw;
 
 		return unvoiced;
 	}
 
 	/**
 	 * Translates the specified index in the range -160 to 160 to the actual
-	 * zero based index of the Uw samples array.  Indexes less than -104
-	 * and greater than 104 will return 0;
-	 * 
-	 * @param index
-	 * @param unvoiced
-	 * @return
+	 * zero based index of the uw inverse dft samples array.
 	 */
-	private double translateUw( int index, double[] Uw )
+	private double translateUw( int index, double[] uw )
 	{
-		if( index < -104 || index > 104 )
+		if( index < -128 || index > 127 )
 		{
 			return 0.0;
 		}
 		
-		return Uw[ index + 104 ];
+		return uw[ index + 128 ];
 	}
 
 	/**
@@ -269,7 +310,7 @@ public class IMBESynthesizer
 		{
 			/* Algorithm #139 - calculate current phase v values */
 			currentPhaseV[ l ] = mPreviousPhaseV[ l ] + 
-				( ( previousFrequency + currentFrequency ) * (double)l * 80.0 );
+				( ( previousFrequency + currentFrequency ) * ( (double)l * 80.0 ) );
 			
 			/* Algorithm #140 - calculate current phase o values */
 			if( l <= threshold )
@@ -281,7 +322,7 @@ public class IMBESynthesizer
 				/* Algorithm #141 - replaced with internal pi random generator */
 						
 				currentPhaseO[ l ] = currentPhaseV[ l ] +
-					( (double)unvoicedSpectralAmplitudes * mRandom2PI.next() / 
+					( ( (double)unvoicedSpectralAmplitudes * mRandom2PI.next() ) / 
 						(double)currentFrame.getModelParameters().getL() );	
 			}
 		}
@@ -312,11 +353,11 @@ public class IMBESynthesizer
 					{
 						/* Algorithm #133 */
 						voiced[ n ] += 2.0 * ( synthesisWindow( n ) * 
-							previousAmplitudes[ l ] * Math.cos( previousFrequency * 
-								(double)n * (double)l + mPreviousPhaseO[ l ] ) +
+							previousAmplitudes[ l ] * Math.cos( ( previousFrequency * 
+								(double)n * (double)l ) + mPreviousPhaseO[ l ] ) +
 							( synthesisWindow( n - 160 ) * currentAmplitudes[ l ] * 
-								Math.cos( currentFrequency * ( (double)n - 160.0 ) * 
-								(double)l + currentPhaseO[ l ] ) ) );
+								Math.cos( ( currentFrequency * ( (double)n - 160.0 ) * 
+								(double)l ) + currentPhaseO[ l ] ) ) );
 					}
 					else
 					{
@@ -356,8 +397,8 @@ public class IMBESynthesizer
 				{
 					/* Algorithm #132 */
 					voiced[ n ] += 2.0 * ( synthesisWindow( n - 160 ) *
-					currentAmplitudes[ l ] * Math.cos( currentFrequency * 
-					( (double)n - 160.0 ) * (double)l + currentPhaseO[ l ] ) );
+					currentAmplitudes[ l ] * Math.cos( ( currentFrequency * 
+					( (double)n - 160.0 ) * (double)l ) + currentPhaseO[ l ] ) );
 				}
 
 				/* Algorithm #130 - harmonics that are unvoiced in both the 
@@ -397,6 +438,22 @@ public class IMBESynthesizer
 		}
 	}
 	
+	public static double getUnvoicedScalingCoefficient()
+	{
+		double sum_wr = 110.01987200000003;
+		double sum_wr_squared = 80.683623293024;
+		double sum_ws_squared = 0.0;
+		
+		for( int x = -104; x < 105; x++ )
+		{
+			sum_ws_squared += ( synthesisWindow( x ) * synthesisWindow( x ) );
+		}
+		
+		double yw = sum_wr * Math.pow( ( sum_ws_squared / sum_wr_squared ) , 0.5 );
+
+		return yw;
+	}
+	
 	/* Algorithm #117 - white noise generator */
 	public class WhiteNoiseGenerator
 	{
@@ -406,7 +463,7 @@ public class IMBESynthesizer
 
 		public WhiteNoiseGenerator()
 		{
-			mCurrentBuffer = new double[ 256 ];
+			mCurrentBuffer = new double[ 209 ];
 			
 			for( int x = 0; x < 209; x++ )
 			{
@@ -438,7 +495,7 @@ public class IMBESynthesizer
 		 */
 		public double[] getWindowedSamples()
 		{
-			double[] nextBuffer = new double[ 256 ];
+			double[] nextBuffer = new double[ 209 ];
 			
 			/* Copy the contents of the current buffer */
 			System.arraycopy( mCurrentBuffer, 0, nextBuffer, 0, 209 );
@@ -459,7 +516,7 @@ public class IMBESynthesizer
 			for( int x = 0; x < SYNTHESIS_WINDOW.length; x++ )
 			{
 				nextBuffer[ x ] *= SYNTHESIS_WINDOW[ x ];
-				nextBuffer[ 209 - x ] *= SYNTHESIS_WINDOW[ x ];
+				nextBuffer[ 208 - x ] *= SYNTHESIS_WINDOW[ x ];
 			}
 			
 			return nextBuffer;
@@ -486,5 +543,12 @@ public class IMBESynthesizer
 			
 			return random;
 		}
+	}
+	
+	public static void main( String[] args ) 
+	{
+		double ws = IMBESynthesizer.getUnvoicedScalingCoefficient();
+		
+		mLog.debug( "ws = " + ws );
 	}
 }

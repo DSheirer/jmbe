@@ -1,8 +1,13 @@
 package jmbe.audio.imbe;
 
+import java.util.Arrays;
+
 import jmbe.binary.BinaryFrame;
 import jmbe.edac.Golay23;
 import jmbe.edac.Hamming15;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /*******************************************************************************
@@ -25,7 +30,13 @@ import jmbe.edac.Hamming15;
 
 public class IMBEFrame
 {
+	private final static Logger mLog = 
+			LoggerFactory.getLogger( IMBEFrame.class );
+
 	public static final double LOG_2 = Math.log( 2.0 );
+	
+	public static final double TWOPI_UNDER_256 = 256.0 / ( 2.0 * Math.PI );
+	public static final double PI_OVER_6 = Math.PI / 6.0;
 
 	public static final int[] RANDOMIZER_SEED = { 0,1,2,3,4,5,6,7,8,9,10,11 };
 
@@ -338,9 +349,10 @@ public class IMBEFrame
 
 		/* Algorithm #116 - scale enhanced spectral amplitudes if amplitude
 		 * measure is greater than amplitude threshold */
-		if( amplitudeMeasure >= mModelParameters.getAmplitudeThreshold() )
+		if( mModelParameters.getAmplitudeThreshold() <= amplitudeMeasure )
 		{
-			double scale = (double)mModelParameters.getAmplitudeThreshold() / amplitudeMeasure;
+			double scale = (double)mModelParameters.getAmplitudeThreshold() / 
+					amplitudeMeasure;
 			
 			for( int l = 1; l < mModelParameters.getL() + 1; l++ )
 			{
@@ -468,16 +480,19 @@ public class IMBEFrame
 		double[] log2MSpectralAmplitudes = new double[ Lplus1 ]; 
 		double[] spectralAmplitudes = new double[ Lplus1 ]; 
 
-		/* Get previous frame's log2M entries, resizing as needed to match the 
-		 * current size of L and setting index 0 to 1.0 */
-		double[] previousLog2M = resize( previousFrame.getModelParameters()
-				.getLog2SpectralAmplitudes(), mModelParameters.getL() + 5 );
+		int previousL = previousFrame.getModelParameters().getL();
 
+		/* Get previous frame's log2M entries and resize them to 1 greather than
+		 * the max of the current L, or the previous L.  Set index 0 to 1.0 and
+		 * any newly expanded indexes to the value of the previously highest
+		 * numbered index */
+		double[] previousLog2M = resize( previousFrame.getModelParameters()
+			.getLog2SpectralAmplitudes(), 
+				Math.max( mModelParameters.getL(), previousL ) + 1 );
+		
 		/* Current frame spectral amplitude prediction residuals (T) */
 		double[] T = mModelParameters.getFundamentalFrequency().getHarmonic()
 				.getSpectralAmplitudePredictionResiduals( mFrame );
-
-		int previousL = previousFrame.getModelParameters().getL();
 		
 		double scale = (double)previousL / (double)mModelParameters.getL();
 
@@ -492,12 +507,7 @@ public class IMBEFrame
 			kl[ l ] = (double)l * scale;
 			
 			kl_floor[ l ] = (int)Math.floor( kl[ l ] );
-			
-			if( kl_floor[ l ] >= previousL )
-			{
-				kl_floor[ l ] = previousL - 1;
-			}
-			
+
 			/* Algorithm #76 - calculate sl */
 			sl[ l ] = kl[ l ] - (double)kl_floor[ l ];
 
@@ -780,12 +790,6 @@ public class IMBEFrame
 		W205( Harmonic.L56, 0.051396198831734860 ),
 		W206( Harmonic.L56, 0.051186845679670766 ),
 		W207( Harmonic.L56, 0.050979191133302930 ),
-		
-		W216( Harmonic.SILENCE, 0.0 ),
-		W217( Harmonic.SILENCE, 0.0 ),
-		W218( Harmonic.SILENCE, 0.0 ),
-		W219( Harmonic.SILENCE, 0.0 ),
-		
 		W_DEFAULT( Harmonic.L30, 0.0937765407097 ),
 		
 		W_INVALID( Harmonic.SILENCE, 0.0 );
@@ -815,7 +819,15 @@ public class IMBEFrame
 		}
 
 		/**
-		 * Produces a map of 256 FFT bins and their corresponding L band
+		 * Produces a map of 256 FFT bins and their mapping to each of the L 
+		 * bands.  The 256 bins are laid out from -128 to 0 to 127.  Each l 
+		 * band, from 1 to L has a minimum bin a and a maximum bin b, where the 
+		 * set of l bands covers bins 0 to 127 for the real value and from
+		 * -1 to -128 for the imaginary values.  The returned array will contain
+		 * mirrored halves resembling the following: 
+		 * 
+		 * INDEX 0  1  2  3  4  5    6   ... 127  128 129 ... 249 250 251 252 253 254 255
+		 * VALUE 0  0  0  L  L  L-1  L-1 ...   0   0   0  ... L-1 L-1 L   L   0   0   0
 		 */
 		public int[] getFFTBinToLBandMap()
 		{
@@ -828,7 +840,8 @@ public class IMBEFrame
 			{
 				for( int x = a[ l ]; x < b[ l ]; x++ )
 				{
-					bins[ x ] = l;
+					bins[ 128 + x ] = l;
+					bins[ 128 - x ] = l;
 				}
 			}
 			
@@ -844,8 +857,8 @@ public class IMBEFrame
 			
 			for( int l = 1; l <= getL(); l++ )
 			{
-				a[ l ] = (int)Math.ceil( ( 256.0 / Math.PI ) * 
-							( (double)l - .5 ) * mFrequency );
+				a[ l ] = (int)Math.ceil( TWOPI_UNDER_256 * 
+						( (double)l - 0.5 ) * mFrequency );
 			}
 			
 			return a;
@@ -860,8 +873,8 @@ public class IMBEFrame
 			
 			for( int l = 1; l <= getL(); l++ )
 			{
-				b[ l ] = (int)Math.ceil( ( 256.0 / Math.PI ) * 
-							( (double)l + .5 ) * mFrequency );
+				b[ l ] = (int)Math.ceil( TWOPI_UNDER_256 * 
+						( (double)l + 0.5 ) * mFrequency );
 			}
 			
 			return b;
@@ -872,10 +885,6 @@ public class IMBEFrame
 			if( 0 <= value && value <= 207 )
 			{
 				return FundamentalFrequency.values()[ value ];
-			}
-			else if( 216 <= value && value <= 219 )
-			{
-				return FundamentalFrequency.values()[ value - 9 ];
 			}
 			
 			return FundamentalFrequency.W_INVALID;
@@ -1106,7 +1115,7 @@ public class IMBEFrame
 			double[][] coefficients = getCoefficients( frame );
 			
 			/* Algorithm #69 & #70 - perform 6-point inverse DCT on gain vector */
-			double[] inverseDCT = new double[ 6 ];
+			double[] R = new double[ 6 ];
 			
 			for( int i = 0; i < 6; i++ )
 			{
@@ -1114,15 +1123,15 @@ public class IMBEFrame
 				{
 					double x = ( m == 0 ) ? 1.0 : 2.0;
 
-					inverseDCT[ i ] += x * coefficients[ m ][ 0 ] * 
-							Math.cos( ( Math.PI * (double)m * ( i + 0.5 ) / 6 ) );
+					R[ i ] += x * coefficients[ m ][ 0 ] * 
+						Math.cos( PI_OVER_6 * (double)m * ( (double)i + 0.5 ) );
 				}
 			}
 
 			/* Transfer results back to the coefficients array */
 			for( int i = 0; i < 6; i++ )
 			{
-				coefficients[ i ][ 0 ] = inverseDCT[ i ];
+				coefficients[ i ][ 0 ] = R[ i ];
 			}
 
 			/* Algorithm #73 & #74 - perform inverse DCT on each of the J-block 
@@ -1143,11 +1152,12 @@ public class IMBEFrame
 						double x = ( k == 0 ) ? 1.0 : 2.0;
 						
 						residuals[ pointer + j ] += x * coefficients[ i ][ k ] *
-						Math.cos( ( Math.PI * k * ( j + 0.5 ) ) / (double)Ji );
+						Math.cos( ( Math.PI * (double)k * ( (double)j + 0.5 ) ) / 
+								(double)Ji );
 					}
 				}
 
-				pointer += coefficients[ i ].length;
+				pointer += Ji;
 			}
 			
 			return residuals;
@@ -1178,13 +1188,13 @@ public class IMBEFrame
 			 * coefficients organized across the 6 J-blocks */
 			for( int j = 0; j < 6; j++ )
 			{
-				coefficients[ j ] = new double[ mBlockHarmonicAllocations[ j ].length ];
-				
-				for( int x = 0; x < mBlockHarmonicAllocations[ j ].length; x++ )
-				{
-					coefficients[ j ][ x ] = getCoefficient( frame, 
-							mBlockHarmonicAllocations[ j ][ x ] );
-				}
+					coefficients[ j ] = new double[ mBlockHarmonicAllocations[ j ].length ];
+					
+					for( int x = 0; x < mBlockHarmonicAllocations[ j ].length; x++ )
+					{
+						coefficients[ j ][ x ] = getCoefficient( frame, 
+								mBlockHarmonicAllocations[ j ][ x ] );
+					}
 			}
 			
 			return coefficients;
@@ -1236,5 +1246,18 @@ public class IMBEFrame
 	public enum Bands
 	{
 		K03,K04,K05,K06,K07,K08,K09,K10,K11,K12;
+	}
+	
+	public static void main( String[] args )
+	{
+		FundamentalFrequency ff = FundamentalFrequency.W0;
+		
+		int[] a = ff.getLBandFFTBinMinimums();
+		int[] b = ff.getLBandFFTBinMaximums();
+		int[] bins = ff.getFFTBinToLBandMap();
+		
+		System.out.println( "a: " + Arrays.toString( a ) );
+		System.out.println( "b: " + Arrays.toString( b ) );
+		System.out.println( "bins: " + Arrays.toString( bins ) );
 	}
 }
