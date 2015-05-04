@@ -1,3 +1,6 @@
+0.1.2 20150502 Resolved issue where zero valued harmonics were not being 
+      calculated to produce a zero valued coefficient
+
 0.1.1 20150403 Removes JTransforms library and resolves issues with audio
       quality
 

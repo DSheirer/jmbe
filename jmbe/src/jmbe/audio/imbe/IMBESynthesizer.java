@@ -94,14 +94,11 @@ public class IMBESynthesizer
 		
 		double[] voiced = getVoiced( frame );
 		
-		double voicedGain = 1.0d;
-		double unvoicedGain = 1.0d;
-
 		/* Algorithm #142 - combine voiced and unvoiced audio samples to form
 		 * the completed audio samples. */
 		for( int x = 0; x < 160; x++ )
 		{
-			shortBuffer.put( (short)( voicedGain * voiced[ x ] + unvoicedGain * unvoiced[ x ] ) );
+			shortBuffer.put( (short)( voiced[ x ] + unvoiced[ x ] ) );
 		}
 
 		mPreviousFrame = frame;
