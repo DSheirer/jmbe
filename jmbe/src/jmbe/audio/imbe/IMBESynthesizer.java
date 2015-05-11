@@ -5,6 +5,8 @@ import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Random;
 
+import jmbe.audio.filter.PolyphaseFIRInterpolatingFilter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +32,43 @@ public class IMBESynthesizer
 {
 	private final static Logger mLog = 
 			LoggerFactory.getLogger( IMBESynthesizer.class );
+
+	/* FIR Low Pass, Rate=48000 Cutoff=3500 Attenuation=40 Taps=96 */
+	public final static double[] INTERPOLATION_TAPS = new double[] 
+	{
+		 0.007300187471974816,  0.005097259494826725,   0.005712972243954874,
+		 0.005362733774878693,  0.0038018679197715827,  0.0009694953196589248, 
+		-0.002964886965760601, -0.0075862727010888795, -0.01229003673763778,
+		-0.01635589863084646,  -0.019092112994559856,  -0.01995714343223198,
+		-0.018687865019723117, -0.015383835693254216,  -0.010512538835934206,
+		-0.004858001663244148,	0.0006092461613441976,  0.004911989607677179,
+		 0.00726416733751404,   0.007238959608193486,	0.004877570468882415,
+		 0.0007126577948239158,-0.004317472404677796,  -0.0090402069331135,
+		-0.012284870299342854, -0.013137637033331139,  -0.01115988953651575,
+		-0.006526471244276116, -0.000036986307418198,	0.0070067602557200405,
+		 0.013039981966069014,	0.016547904694628034,	0.01640167034793927,
+		 0.01215628025871582,	0.004227856449346387,  -0.006083335260425708,
+		-0.01675308389210969,  -0.025346649636069946,  -0.029424376739997617,
+		-0.027005907002461343, -0.016986778883469316,	0.0005759965948669247,
+		 0.024395145718852745,	0.05205520498925329,	0.08031270928460642,
+		 0.10564297007164658,	0.12470366168963708,	0.13493554623555842,
+		 0.13493554623555842,	0.12470366168963708,	0.10564297007164658,
+		 0.08031270928460642,	0.05205520498925329,	0.024395145718852745,
+		 0.0005759965948669247,-0.016986778883469316,  -0.027005907002461343,
+		-0.029424376739997617, -0.025346649636069946,  -0.01675308389210969,
+		-0.006083335260425708,	0.0042278564493463825,	0.01215628025871582,
+		 0.01640167034793927,	0.016547904694628034,	0.013039981966069014,
+		 0.007006760255720042, -0.00003698630741820032,-0.006526471244276116,	
+		-0.011159889536515748, -0.013137637033331139,  -0.012284870299342854,	
+		-0.0090402069331135,   -0.004317472404677791,	0.0007126577948239158,
+		 0.004877570468882415,	0.007238959608193486,	0.00726416733751404,
+		 0.004911989607677181,	0.0006092461613441976, -0.004858001663244148,
+		-0.010512538835934206, -0.015383835693254216,  -0.01868786501972312,
+		-0.01995714343223198,  -0.019092112994559856,  -0.01635589863084645,
+		-0.01229003673763778,  -0.0075862727010888795, -0.002964886965760601,
+		 0.0009694953196589248,	0.0038018679197715827,	0.005362733774878693,
+		 0.005712972243954874,	0.005097259494826725,	0.007300187471974816,
+	};
 
 	public static final double TWO_PI = Math.PI * 2.0;
 	public static final double TWOPI_OVER_256 = 2.0 * Math.PI / 256.0;
@@ -63,12 +102,27 @@ public class IMBESynthesizer
 	private double[] mPreviousPhaseO = new double[ 57 ];
 	private double[] mPreviousPhaseV = new double[ 57 ];
 	private double[] mPreviousUw = new double[ 256 ];
+
+	private PolyphaseFIRInterpolatingFilter mUpsampler;
+	private boolean mUpsample = false;
 	
 	/**
 	 * Synthesizes 8 kHz 16-bit audio from IMBE audio frames
 	 */
 	public IMBESynthesizer()
 	{
+	}
+	
+	public IMBESynthesizer( boolean upsample )
+	{
+		this();
+		
+		mUpsample = upsample;
+		
+		if( mUpsample )
+		{
+			mUpsampler = new PolyphaseFIRInterpolatingFilter( INTERPOLATION_TAPS, 6 );
+		}
 	}
 
 	/**
@@ -85,7 +139,7 @@ public class IMBESynthesizer
 	public ByteBuffer getAudio( IMBEFrame frame )
 	{
 		/* Little-endian byte buffer with room for 160 x 2-byte short samples */
-		ByteBuffer buffer = ByteBuffer.allocate( 320 )
+		ByteBuffer buffer = ByteBuffer.allocate( 320 * ( mUpsample ? 6 : 1 ) )
 					.order( ByteOrder.LITTLE_ENDIAN );
 
 		ShortBuffer shortBuffer = buffer.asShortBuffer();
@@ -96,16 +150,33 @@ public class IMBESynthesizer
 		
 		/* Algorithm #142 - combine voiced and unvoiced audio samples to form
 		 * the completed audio samples. */
-		for( int x = 0; x < 160; x++ )
+		if( mUpsample )
 		{
-			shortBuffer.put( (short)( voiced[ x ] + unvoiced[ x ] ) );
+			for( int x = 0; x < 160; x++ )
+			{
+				float sample = (float)( voiced[ x ] + unvoiced[ x ] );
+					
+				float[] upsamples = mUpsampler.interpolate( sample );
+				
+				for( float upsample: upsamples )
+				{
+					shortBuffer.put( (short)upsample );
+				}
+			}
+		}
+		else
+		{
+			for( int x = 0; x < 160; x++ )
+			{
+				shortBuffer.put( (short)( voiced[ x ] + unvoiced[ x ] ) );
+			}
 		}
 
 		mPreviousFrame = frame;
 		
 		return buffer;
 	}
-
+	
 	/**
 	 * Generates the unvoiced component of the audio signal using a white noise
 	 * generator where the frequency components corresponding to the voiced
@@ -540,12 +611,5 @@ public class IMBESynthesizer
 			
 			return random;
 		}
-	}
-	
-	public static void main( String[] args ) 
-	{
-		double ws = IMBESynthesizer.getUnvoicedScalingCoefficient();
-		
-		mLog.debug( "ws = " + ws );
 	}
 }

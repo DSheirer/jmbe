@@ -51,16 +51,15 @@ Compiling and using the Library
 	
 Third-Party libraries
 
-	jmbe uses two third-party libraries that are not included in the default
-	library output product in order to avoid conflicts when these same libraries
-	are used in your program.
+	jmbe uses a third-party logging library that are not included in the default
+	library output product in order to avoid conflicts when the same library
+	is used in your program.
 	
-	If you want to include these third party libraries in the compiled jbme
-	library so that you don't have to include them yourself, you can use the 
+	If you want to include this third party library in the compiled jbme
+	library so that you don't have to include it yourself, you can use the 
 	ant build target:  ant library-complete
 	
-	Libraries used by jbme:
+	Library used by jbme:
 		
-	Piotr Wendykier's JTransforms libary: https://github.com/wendykierp/JTransforms
 	Simple Logging Facade for Java: http://www.slf4j.org/
 	

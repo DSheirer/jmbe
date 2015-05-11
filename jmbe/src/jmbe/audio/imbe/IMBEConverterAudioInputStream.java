@@ -7,6 +7,8 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 
+import jmbe.audio.filter.PolyphaseFIRInterpolatingFilter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +36,7 @@ public class IMBEConverterAudioInputStream extends AudioInputStream
 			.getLogger( IMBEConverterAudioInputStream.class );
 
 	private AudioInputStream mSourceStream;
-	private IMBESynthesizer mSynthesizer = new IMBESynthesizer();
+	private IMBESynthesizer mSynthesizer;
 	private IMBEFrame mPreviousFrame = IMBEFrame.getDefault();
 	private ByteBuffer mBuffer;
 
@@ -46,13 +48,15 @@ public class IMBEConverterAudioInputStream extends AudioInputStream
 	 * @param format - IMBE.  See IMBEAudioFormat class.
 	 * @param length - use AudioSystem.NOT_SPECIFIED.
 	 */
-	IMBEConverterAudioInputStream( AudioInputStream stream )
+	IMBEConverterAudioInputStream( AudioInputStream stream, AudioFormat target )
 	{
-		super( stream, 
-			   IMBEAudioFormat.PCM_SIGNED_8KHZ_16BITS, 
-			   AudioSystem.NOT_SPECIFIED );
+		super( stream, target, AudioSystem.NOT_SPECIFIED );
 
 		mSourceStream = stream;
+		
+		boolean upsample = target.getSampleRate() == IMBEAudioFormat.PCM_48KHZ_RATE;
+		
+		mSynthesizer = new IMBESynthesizer( upsample );		
 	}
 	
 	private void getFrame()

@@ -68,7 +68,8 @@ public class IMBEAudioConverter extends FormatConversionProvider
 		if( compare( AudioFormat.Encoding.PCM_SIGNED, targetEncoding ) &&
 			IMBEAudioFormat.IMBE_AUDIO_FORMAT.matches( sourceFormat ) )
 		{
-			return new AudioFormat[] { IMBEAudioFormat.PCM_SIGNED_8KHZ_16BITS };
+			return new AudioFormat[] { IMBEAudioFormat.PCM_SIGNED_8KHZ_16BITS,
+									   IMBEAudioFormat.PCM_SIGNED_48KHZ_16BITS };
 		}
 		
 		return null;
@@ -81,7 +82,7 @@ public class IMBEAudioConverter extends FormatConversionProvider
 		if( compare( AudioFormat.Encoding.PCM_SIGNED, targetEncoding ) &&
 			IMBEAudioFormat.IMBE_AUDIO_FORMAT.matches( sourceStream.getFormat() ) )
 		{
-			return getAudioInputStream( IMBEAudioFormat.PCM_SIGNED_8KHZ_16BITS, 
+			return getAudioInputStream( IMBEAudioFormat.PCM_SIGNED_48KHZ_16BITS, 
 					sourceStream );
 		}
 		
@@ -92,10 +93,11 @@ public class IMBEAudioConverter extends FormatConversionProvider
 	public AudioInputStream getAudioInputStream( AudioFormat targetFormat,
 			AudioInputStream sourceStream )
 	{
-		if( IMBEAudioFormat.PCM_SIGNED_8KHZ_16BITS.matches( targetFormat ) &&
-			IMBEAudioFormat.IMBE_AUDIO_FORMAT.matches( sourceStream.getFormat() ) )
+		if( IMBEAudioFormat.IMBE_AUDIO_FORMAT.matches( sourceStream.getFormat() ) &&
+			( IMBEAudioFormat.PCM_SIGNED_8KHZ_16BITS.matches( targetFormat ) ||
+			  IMBEAudioFormat.PCM_SIGNED_48KHZ_16BITS.matches( targetFormat ) ) )
 		{
-			return new IMBEConverterAudioInputStream( sourceStream );
+			return new IMBEConverterAudioInputStream( sourceStream, targetFormat );
 		}
 		
 		return null;
