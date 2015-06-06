@@ -1,40 +1,52 @@
-<project name="jmbe" default="library" basedir=".">
+<project name="jmbe" default="library-and-interface-jars" basedir=".">
   <description>
     Ant build script for the java Multi-Band Excitation (jmbe) decoder library
   </description>
 
   <!-- version properties -->
   <property name="major" value="0"/>
-  <property name="minor" value="1"/>
-  <property name="build" value="3"/>
+  <property name="minor" value="2"/>
+  <property name="build" value="0"/>
   
   <!-- build properties -->
-  <property name="root" location=".."/>
-  <property name="classes" location="../classes"/>
-  <property name="library"  location="../library"/>
-  <property name="libs"  location="../imports"/>
-  <property name="meta"  location="../META-INF"/>
-  <property name="src" location="../src"/>
+  <property name="root_path" location=".."/>
+  <property name="classes" location="${root_path}/classes"/>
+  <property name="interfaces" location="${root_path}/interfaces"/>
+  <property name="library"  location="${root_path}/library"/>
+  <property name="libs"  location="${root_path}/imports"/>
+  <property name="meta"  location="${root_path}/META-INF"/>
+  <property name="src" location="${root_path}/src"/>
 
   <path id="classpath">
     <fileset dir="${libs}" includes="*.jar" />
   </path>
+  
+  <target name="library-and-interface-jars" depends="interface,library" 
+  			description="Builds the library and interface jars" />
 
   <target name="clean" description="Clean previous build artifacts" >
     <!-- Delete the ${classes} and ${product} directory trees -->
     <delete dir="${classes}"/>
+    <delete dir="${interfaces}"/>
     <delete dir="${library}"/>
   </target>
 
   <target name="init">
     <!-- Create the classes folder to contain the compiled java classes -->
     <mkdir dir="${classes}"/>
+    <mkdir dir="${interfaces}"/>
     <mkdir dir="${library}"/>
   </target>
 
   <target name="compile" depends="clean,init" description="Compile java classes" >
     <!-- Compile the java code from ${src} into ${classes} -->
     <javac srcdir="${src}" destdir="${classes}" classpathref="classpath" 
+    				includeantruntime="false" />
+  </target>
+
+  <target name="compile-interfaces" depends="clean,init" description="Compile java interface classes" >
+    <!-- Compile the java code from ${src} into ${interfaces} -->
+    <javac srcdir="${src}/jmbe/iface" destdir="${interfaces}" classpathref="classpath" 
     				includeantruntime="false" />
   </target>
   
@@ -47,12 +59,24 @@
         <attribute name="Site" value="https://github.com/DSheirer/jmbe"/>
       </manifest>
 
-      <!-- Service Provider Interface entries -->
-      <service type="javax.sound.sampled.spi.FormatConversionProvider">
-        <provider classname="jmbe.audio.imbe.IMBEAudioConverter"/>
-      </service>
-	  
-  	  <fileset dir="${root}">
+  	  <fileset dir="${root_path}">
+  	  	<include name="LICENSE"/>
+  	  	<include name="README.md"/>
+  	  	<include name="CHANGELOG"/>
+  	  </fileset>
+    </jar>
+  </target>
+
+  <target name="interface" depends="compile-interfaces" description="Create jbme interface library" >
+    <jar jarfile="${library}/jmbe-interface-${major}.${minor}.${build}.jar" basedir="${interfaces}">
+	  <manifest>
+        <attribute name="Title" 
+        	value="Java Audio Conversion Library - Interfaces"/>
+        <attribute name="Version" value="${major}.${minor}.${build}"/>
+        <attribute name="Site" value="https://github.com/DSheirer/jmbe"/>
+      </manifest>
+
+  	  <fileset dir="${root_path}">
   	  	<include name="LICENSE"/>
   	  	<include name="README.md"/>
   	  	<include name="CHANGELOG"/>
