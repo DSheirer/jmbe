@@ -1,4 +1,4 @@
-package jmbe.audio.imbe;
+package jmbe.converters.imbe;
 
 import java.util.BitSet;
 

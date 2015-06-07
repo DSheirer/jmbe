@@ -1,4 +1,4 @@
-<project name="jmbe" default="library-and-interface-jars" basedir=".">
+<project name="jmbe" default="create-all" basedir=".">
   <description>
     Ant build script for the java Multi-Band Excitation (jmbe) decoder library
   </description>
@@ -16,14 +16,33 @@
   <property name="libs"  location="${root_path}/imports"/>
   <property name="meta"  location="${root_path}/META-INF"/>
   <property name="src" location="${root_path}/src"/>
+  <property name="builder" location="${root_path}/scripted_builder"/>
 
   <path id="classpath">
     <fileset dir="${libs}" includes="*.jar" />
   </path>
   
-  <target name="library-and-interface-jars" depends="interface,library" 
-  			description="Builds the library and interface jars" />
+  <target name="create-all" depends="create-builder,create-interface,create-library" 
+  			description="Creates all products" />
 
+  <target name="create-builder" depends="clean" 
+  				description="Create JMBE library scripted builder">
+
+  	<zip destfile="${library}/jmbe_builder.zip" basedir="${builder}" />
+  	
+  	<tar destfile="${library}/jmbe_builder.tar.gz" compression="gzip">
+ 	  <tarfileset dir="${builder}" filemode="777">
+  	    <include name="*.sh"/>
+  	    <include name="jmbe_builder/ant/bin/ant"/>
+  	  </tarfileset>
+   	  <tarfileset dir="${builder}">
+  	    <exclude name="*.sh"/>
+  	    <exclude name="jmbe_builder/ant/bin/ant"/>
+  	  </tarfileset>
+  	</tar>  	
+  	
+  </target>
+  	
   <target name="clean" description="Clean previous build artifacts" >
     <!-- Delete the ${classes} and ${product} directory trees -->
     <delete dir="${classes}"/>
@@ -38,19 +57,20 @@
     <mkdir dir="${library}"/>
   </target>
 
-  <target name="compile" depends="clean,init" description="Compile java classes" >
+  <target name="compile-library" depends="clean,init" description="Compile java classes" >
     <!-- Compile the java code from ${src} into ${classes} -->
     <javac srcdir="${src}" destdir="${classes}" classpathref="classpath" 
-    				includeantruntime="false" />
+	    				includeantruntime="false" />
   </target>
 
-  <target name="compile-interfaces" depends="clean,init" description="Compile java interface classes" >
+  <target name="compile-interface" depends="clean,init" description="Compile java interface classes" >
     <!-- Compile the java code from ${src} into ${interfaces} -->
     <javac srcdir="${src}/jmbe/iface" destdir="${interfaces}" classpathref="classpath" 
-    				includeantruntime="false" />
+	    				includeantruntime="false" />
   </target>
-  
-  <target name="library" depends="compile" description="Create jbme library - no third party libraries" >
+	  
+  <target name="create-library" depends="compile-library" 
+  			description="Create jbme library - no third party libraries" >
     <jar jarfile="${library}/jmbe-${major}.${minor}.${build}.jar" basedir="${classes}">
 	  <manifest>
         <attribute name="Title" 
@@ -67,7 +87,8 @@
     </jar>
   </target>
 
-  <target name="interface" depends="compile-interfaces" description="Create jbme interface library" >
+  <target name="create-interface" depends="compile-interface" 
+  			description="Create jbme interface library" >
     <jar jarfile="${library}/jmbe-interface-${major}.${minor}.${build}.jar" basedir="${interfaces}">
 	  <manifest>
         <attribute name="Title" 
@@ -84,7 +105,8 @@
     </jar>
   </target>
 
-  <target name="library-complete" depends="compile" description="Create jbme library including third-party libararies" >
+  <target name="create-library-with-third-party-libs" depends="compile-library" 
+  		description="Create jbme library including third-party libararies" >
     <jar jarfile="${library}/jmbe-${major}.${minor}.${build}.jar" basedir="${classes}">
 	  <manifest>
         <attribute name="Title" 
@@ -93,11 +115,6 @@
         <attribute name="Site" value="https://github.com/DSheirer/jmbe"/>
       </manifest>
 
-      <!-- Service Provider Interface entries -->
-      <service type="javax.sound.sampled.spi.FormatConversionProvider">
-        <provider classname="jmbe.audio.imbe.IMBEAudioConverter"/>
-      </service>
-	  
   	  <fileset dir="${license}">
   	  	<include name="license.txt"/>
   	  </fileset>

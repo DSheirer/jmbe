@@ -1,4 +1,4 @@
-package jmbe.audio.imbe;
+package jmbe.converters.imbe;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -7,6 +7,7 @@ import java.util.Random;
 
 import jmbe.audio.filter.PolyphaseFIRInterpolatingFilter;
 
+import org.jtransforms.fft.DoubleFFT_1D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,9 +72,8 @@ public class IMBESynthesizer
 	};
 
 	public static final double TWO_PI = Math.PI * 2.0;
-	public static final double TWOPI_OVER_256 = 2.0 * Math.PI / 256.0;
 	public static final double SCALE_256 = 1.0 / 256.0;
-
+	
 	/* Algorithm 121 - create scaling coefficient (yw) from synthesis window (ws) 
 	 * and the initial pitch refinement window (wr) 
 	 * 
@@ -106,11 +106,14 @@ public class IMBESynthesizer
 	private PolyphaseFIRInterpolatingFilter mUpsampler;
 	private boolean mUpsample = false;
 	
+	private DoubleFFT_1D mFFT = new DoubleFFT_1D( 256 );
+	
 	/**
 	 * Synthesizes 8 kHz 16-bit audio from IMBE audio frames
 	 */
 	public IMBESynthesizer()
 	{
+		
 	}
 	
 	public IMBESynthesizer( boolean upsample )
@@ -138,6 +141,8 @@ public class IMBESynthesizer
 	 */
 	public ByteBuffer getAudio( IMBEFrame frame )
 	{
+		frame.setPreviousFrameParameters( mPreviousFrame );
+		
 		/* Little-endian byte buffer with room for 160 x 2-byte short samples */
 		ByteBuffer buffer = ByteBuffer.allocate( 320 * ( mUpsample ? 6 : 1 ) )
 					.order( ByteOrder.LITTLE_ENDIAN );
@@ -172,8 +177,10 @@ public class IMBESynthesizer
 			}
 		}
 
-		mPreviousFrame = frame;
+		mPreviousFrame.dispose();
 		
+		mPreviousFrame = frame;
+
 		return buffer;
 	}
 	
@@ -187,8 +194,10 @@ public class IMBESynthesizer
 	 */
 	public double[] getUnvoiced( IMBEFrame frame )
 	{
+		long start = System.currentTimeMillis();
+		
 		double[] samples = mWhiteNoise.getWindowedSamples();
-
+		
 		/* Algorithm #122 and #123 - generate the 256 FFT bins to L frequency 
 		 * band mapping from the fundamental frequency */
 		int[] fftBinLBandMap = frame.getModelParameters()
@@ -205,81 +214,77 @@ public class IMBESynthesizer
 		int[] b_max = frame.getModelParameters()
 				.getFundamentalFrequency().getLBandFFTBinMaximums();
 
-
-		/* Algorithm #118 - perform 256-point DFT against samples.
-		 * Algorithm #119 and #124 - zeroize the voiced frequency bins and
-		 * all of the lowest and highest frequency bins -- we do this by not
-		 * calculating the DFT for the corresponding frequency bins that match
-		 * these high/low and voiced l bands. */
-		double dftUw[] = new double[ 256 ];
+		/* Algorithm #118 - perform 256-point DFT against samples.  We use the 
+		 * JTransforms library to calculate an FFT against the 256 element 
+		 * sample array that contains zeros for all elements greater than 209 */
+		mFFT.realForward( samples );
+		/* NOTE: from this point forward, samples contains the DFT frequency
+		 * bins (uw) */
 		
-		for( int y = 0; y < 256; y++ )
+		/* Algorithm #120 - determine band-level scaling value for each DFT bin 
+		 * for unvoiced samples and zeroize all voiced and out-of-band bins.
+		 * 
+		 * The denominator in this algorithm is the average bin energy per band 
+		 * calculated by summing the squared dft real and the squared dft imaginary 
+		 * values, dividing by the number of bins in the band to get the average, 
+		 * and then taking the square root to get the magnitude average 
+		 * (a^2 + b^2 = c^2).  Calculate this value for each of the unvoiced 
+		 * bands and apply the unvoiced scaling coefficient and the decoded
+		 * amplitude for the band. */
+		
+		double[] bandScalor = new double[ frame.getModelParameters().getL() + 1 ];
+		
+		for( int band = 1; band <= frame.getModelParameters().getL(); band++ )
 		{
-			/* Only calculate if this is an unvoiced band DFT frequency bin */
-			
-			int band = fftBinLBandMap[ y ];
-			
-			if( band != 0 && !voicedBands[ band ] )
+			if( !voicedBands[ band ] )
 			{
-				double m2PiOver256 = TWOPI_OVER_256 * (double)( y - 128 );
+				double numerator = 0.0;
 				
-				for( int x = 0; x < 209; x++ )
+				for( int y = a_min[ band ]; y < b_max[ band ]; y++ )
 				{
-					double n = (double)( x - 104 );
+					int dftBinIndex = 2 * y;
 					
-					dftUw[ y ] += ( ( samples[ x ] * Math.cos( m2PiOver256 * (double)n ) ) -
-								    ( samples[ x ] * Math.sin( m2PiOver256 * (double)n ) ) );
+					/* Real component */
+					numerator += ( samples[ dftBinIndex ] * samples[ dftBinIndex ] );
+
+					dftBinIndex++;
+					
+					/* Imaginary component */
+					numerator += ( samples[ dftBinIndex ] * samples[ dftBinIndex ] );
 				}
+
+				double denominator = (double)( b_max[ band ] - a_min[ band ] );
+
+				bandScalor[ band ] = UNVOICED_SCALING_COEFFICIENT * 
+					amplitudes[ band ] / Math.pow( ( numerator / denominator ), 0.5 );
 			}
 		}
-		
-		double[] Uw = new double[ 256 ];
 
+		/* Algorithm #119 and #124 - zeroize voiced frequency bins and all of 
+		 * the lowest and highest frequency bins, and scale all of the unvoiced
+		 * frequency bins. */
 		for( int bin = 0; bin < 256; bin++ )
 		{
 			int band = fftBinLBandMap[ bin ];
 
 			/* Algorithm #120 - scale the unvoiced white noise frequency bin */
-			if( band != 0 && !voicedBands[ band ] )
+			if( !voicedBands[ band ] && band != 0 )
 			{
-				double numerator = 0.0;
-
-				for( int y = a_min[ band ]; y < b_max[ band ]; y++ )
-				{
-					int index = ( y < 128 ) ? 128 - y : y + 128;
-					double value = dftUw[ index ];
-					numerator += ( value * value );
-				}
-
-				double denominator = (double)( b_max[ band ] - a_min[ band ] );
-
-				
-				double scaling_denominator = Math.pow( ( numerator / denominator ), 0.5 );
-
-				
-				Uw[ bin ] = ( UNVOICED_SCALING_COEFFICIENT * amplitudes[ band ] * 
-						dftUw[ bin ] ) / scaling_denominator;
+				samples[ bin ] *= bandScalor[ band ];
+			}
+			else
+			{
+				samples[ bin ] = 0.0;
 			}
 		}
 		
-		/* Algorithm #125 - inverse DFT of scaled unvoiced and zeroized voiced 
-		 * dft frequency bins from the white noise */
-		double[] uw = new double[ 256 ];
-
-		for( int x = 0; x < 256; x++ )
-		{
-			double n2PiOver256 = TWOPI_OVER_256 * (double)( x - 128 );
-			
-			for( int y = 0; y < 256; y++ )
-			{
-				double m = (double)( y - 128 );
-				
-				uw[ x ] += ( ( Uw[ y ] * Math.cos( n2PiOver256 * (double)m ) ) +
-						     ( Uw[ y ] * Math.sin( n2PiOver256 * (double)m ) ) );
-			}
-			
-			uw[ x ] *= SCALE_256;
-		}
+		/* Algorithm #125 - calculate inverse DFT of scaled unvoiced and 
+		 * zeroized voiced dft frequency bins to recreate the white noise with
+		 * the voiced and out-of-band audio components removed. */
+		mFFT.realInverse( samples, true );
+		
+		/* Note: from this point forward, samples contains the inverse DFT 
+		 * results (Uw) */
 		
 		/* Algorithm #126 - use Weighted Overlap Add algorithm to combine previous 
 		 * Uw and the current Uw inverse DFT results to form final unvoiced set */
@@ -291,11 +296,11 @@ public class IMBESynthesizer
 			double winInverse = synthesisWindow( n - 160 );
 			
 			unvoiced[ n ] = ( ( win * translateUw( n, mPreviousUw ) ) +
-				  ( winInverse * translateUw( n - 160, uw ) ) ) /
+				  ( winInverse * translateUw( n - 160, samples ) ) ) /
 				  ( ( win * win ) + ( winInverse * winInverse ) );
 		}
 		
-		mPreviousUw = uw;
+		mPreviousUw = samples;
 
 		return unvoiced;
 	}
@@ -341,14 +346,24 @@ public class IMBESynthesizer
 	 */
 	public double[] getVoiced( IMBEFrame currentFrame )
 	{
-		int maxL = Math.max( currentFrame.getModelParameters().getL(), 
-				 mPreviousFrame.getModelParameters().getL() );
+		int currentL = currentFrame.getModelParameters().getL();
+
+		int previousL = mPreviousFrame.getModelParameters().getL();
+		
+		int maxL = Math.max( currentL, previousL );
 
 		boolean[] currentVoicing = resize( currentFrame.getModelParameters()
 				.getVoicingDecisions(), maxL + 1 );
 		
 		boolean[] previousVoicing = resize( mPreviousFrame.getModelParameters()
 				.getVoicingDecisions(), maxL + 1 );
+		
+		/* Algorithm #128 and #129 - enhanced spectral amplitudes for current
+		 * and previous frames outside range of 1 - L are set to zero.  Below,
+		 * in the audio generation loop, we control access to these arrays 
+		 * through the voicing decisions array.  Thus, we don't have to resize
+		 * the enhanced spectral amplitudes arrays to the max L of current or
+		 * previous. */
 		
 		double currentFrequency = currentFrame.getModelParameters()
 				.getFundamentalFrequency().getFrequency();
@@ -360,25 +375,28 @@ public class IMBESynthesizer
 		double[] currentPhaseV = new double[ 57 ];
 		double[] currentPhaseO = new double[ 57 ];
 		
-		int threshold = (int)Math.floor( (double)currentFrame
-					.getModelParameters().getL() / 4.0d );
 		
-		/* number of unvoiced spectral amplitudes (Luv) in current frame */
+		/* Algorithm #140 partial - number of unvoiced spectral amplitudes (Luv) 
+		 * in current frame */
 		int unvoicedSpectralAmplitudes = 0;
 		
-		for( int x = 1; x < currentVoicing.length; x++ )
+		for( int x = 1; x <= currentL; x++ )
 		{
 			if( !currentVoicing[ x ] )
 			{
 				unvoicedSpectralAmplitudes++;
 			}
 		}
+
+		double summedFrequencies = ( previousFrequency + currentFrequency ) * 
+				80.0; //160.0 / 2.0;
+		
+		int threshold = (int)Math.floor( (double)currentL / 4.0d );
 		
 		for( int l = 1; l <= 56; l++ )
 		{
 			/* Algorithm #139 - calculate current phase v values */
-			currentPhaseV[ l ] = mPreviousPhaseV[ l ] + 
-				( ( previousFrequency + currentFrequency ) * ( (double)l * 80.0 ) );
+			currentPhaseV[ l ] = mPreviousPhaseV[ l ] + ( summedFrequencies * (double)l );
 			
 			/* Algorithm #140 - calculate current phase o values */
 			if( l <= threshold )
@@ -391,7 +409,7 @@ public class IMBESynthesizer
 						
 				currentPhaseO[ l ] = currentPhaseV[ l ] +
 					( ( (double)unvoicedSpectralAmplitudes * mRandom2PI.next() ) / 
-						(double)currentFrame.getModelParameters().getL() );	
+						(double)currentL );	
 			}
 		}
 		
@@ -410,14 +428,16 @@ public class IMBESynthesizer
 		 * voicing decisions of the current and previous frames for each
 		 * harmonic.
 		 */
+		boolean commonVoicingFrequencyThreshold = 
+			Math.abs( currentFrequency - previousFrequency ) >= ( 0.1 * currentFrequency );
+		
 		for( int n = 0; n < 160; n++ )
 		{
 			for( int l = 1; l <= maxL; l++ )
 			{
 				if( currentVoicing[ l ] && previousVoicing[ l ] )
 				{
-					if( l >= 8 || Math.abs( currentFrequency - previousFrequency ) >= 
-							( 0.1 * currentFrequency ) )
+					if( l >= 8 || commonVoicingFrequencyThreshold )
 					{
 						/* Algorithm #133 */
 						voiced[ n ] += 2.0 * ( synthesisWindow( n ) * 
@@ -436,8 +456,7 @@ public class IMBESynthesizer
 								
 						/* Algorithm #137 */
 						double ol = ( currentPhaseO[ l ] - mPreviousPhaseO[ l ] - 
-							( ( previousFrequency + currentFrequency ) * 
-								( (double)l * 80.0 ) ) );
+							( summedFrequencies * (double)l ) );
 
 						/* Algorithm #138 */
 						double wl = ( ol - ( TWO_PI * Math.floor( 
@@ -450,7 +469,7 @@ public class IMBESynthesizer
 							( ( (double)l * (double)n * (double)n ) / 320.0 ) );	
 
 						/* Algorithm #134 */
-						voiced[ n ] += 2.0 * ( amplitude * Math.cos( phase ) );
+						voiced[ n ] += ( 2.0 * ( amplitude * Math.cos( phase ) ) );
 					}
 				}
 				else if( !currentVoicing[ l ] && previousVoicing[ l ] )
@@ -563,7 +582,7 @@ public class IMBESynthesizer
 		 */
 		public double[] getWindowedSamples()
 		{
-			double[] nextBuffer = new double[ 209 ];
+			double[] nextBuffer = new double[ 256 ];
 			
 			/* Copy the contents of the current buffer */
 			System.arraycopy( mCurrentBuffer, 0, nextBuffer, 0, 209 );

@@ -1,4 +1,4 @@
-package jmbe.audio.imbe;
+package jmbe.audio;
 
 import javax.sound.sampled.AudioFormat;
 
@@ -20,7 +20,7 @@ import javax.sound.sampled.AudioFormat;
  *     along with this program.  If not, see <http://www.gnu.org/licenses/>
  ******************************************************************************/
 
-public class IMBEAudioFormat
+public class JMBEAudioFormat
 {
 	public static final AudioFormat.Encoding IMBE_ENCODING = 
 				new AudioFormat.Encoding( "IMBE" );

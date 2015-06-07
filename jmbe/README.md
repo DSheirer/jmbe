@@ -7,7 +7,7 @@ jmbe - Java Multi-Band Excitation library
 
   Includes a javax.sound.sampled.spi.FormatConversionProvider compatible plug-in
   to support error detection and correction, decoding and converting IMBE 144-bit, 
-  20 millisecond audio frames to 8 kHz 16-bit Mono PCM encoded audio.
+  20 millisecond audio frames to 48 kHz 16-bit Mono PCM encoded audio.
 
 PATENT NOTICE
 
@@ -49,6 +49,12 @@ Compiling and using the Library
 	startup.  If you are adding the jmbe library to an existing program, simply
 	copy the libaray to the same folder as the program you are using. 
 	
+Scripted downloading and compiling the library for end-users
+
+	1.  Run the ant target 'create_builder' to create a zip file that will 
+	clone the jmbe git repository locally, compile the code and generate the 
+	library jar file, using windows or linux scripts.
+	
 Third-Party libraries
 
 	jmbe uses a third-party logging library that are not included in the default
@@ -59,7 +65,51 @@ Third-Party libraries
 	library so that you don't have to include it yourself, you can use the 
 	ant build target:  ant library-complete
 	
-	Library used by jbme:
+	Libraries used by jbme:
 		
 	Simple Logging Facade for Java: http://www.slf4j.org/
+	JTransforms FFT: https://sites.google.com/site/piotrwendykier/software/jtransforms
+
+Using the jmbe audio conversion library in your own java program
+
+	1. Run the ant task 'interface' to generate the generic audio converter 
+	interfaces library and place the library on your class path.
 	
+	2. Add the following code to your program
+	
+		AudioConversionLibrary library = null;
+		
+		AudioConverter converter = null;
+		
+		try
+		{
+			Class temp = Class.forName( "jmbe.JMBEAudioLibrary" );
+			
+			library = (AudioConversionLibrary)temp.newInstance();
+
+			converter = library.getAudioConverter( "IMBE", 
+					AudioFormats.PCM_SIGNED_48KHZ_16BITS );
+			
+			mCanConvertAudio = ( converter != null );
+		} 
+		catch ( ClassNotFoundException e1 )
+		{
+			mLog.error( "Couldn't find/load JMBE audio conversion library", e1 );
+		}
+		catch ( InstantiationException e1 )
+		{
+			mLog.error( "Couldn't instantiate JMBE audio conversion library class" );
+		}
+		catch ( IllegalAccessException e1 )
+		{
+			mLog.error( "Couldn't load JMBE audio conversion library due to security restrictions" );
+		}
+	
+	3. To convert 18-byte IMBE audio frames, use the following code:
+
+		if( converter != null )
+		{
+			byte[] convertedAudio = converter.convert( unconvertedAudio );
+		}	
+		
+		

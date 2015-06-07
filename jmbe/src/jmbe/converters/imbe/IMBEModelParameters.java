@@ -1,9 +1,8 @@
-package jmbe.audio.imbe;
+package jmbe.converters.imbe;
 
-import java.text.DecimalFormat;
 import java.util.Arrays;
 
-import jmbe.audio.imbe.IMBEFrame.FundamentalFrequency;
+import jmbe.converters.imbe.IMBEFrame.FundamentalFrequency;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

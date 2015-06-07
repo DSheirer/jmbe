@@ -1,4 +1,4 @@
-package jmbe.audio.imbe;
+package jmbe.converters.imbe;
 
 import java.util.Arrays;
 
@@ -111,12 +111,16 @@ public class IMBEFrame
 
 	private IMBEModelParameters mModelParameters;
 	private BinaryFrame mFrame;
+	private int mErrorCountCoset0;
+	private int mErrorCountTotal;
 
 	/**
 	 * Constructs an IMBE frame from a binary message containing an 18-byte or
 	 * 144-bit message frame, and a previous IMBE frame.  Performs error detection
-	 * and correction and provides access to the model parameters that are
-	 * needed to synthesize speech.
+	 * and correction.
+	 * 
+	 * After construction, use the setPrevious() method to the previous imbe
+	 * frame so that model parameters can be generated.
 	 * 
 	 * Use the getModelParameters() method to access the parameters for speech
 	 * synthesis.
@@ -124,7 +128,7 @@ public class IMBEFrame
 	 * Use the .getDefault() method to generate the first (default) IMBE frame
 	 * to use at the start of a sequence.
 	 */
-	public IMBEFrame( byte[] data, IMBEFrame previous )
+	public IMBEFrame( byte[] data )
 	{
 		mFrame = BinaryFrame.fromBytes( data );
 
@@ -132,29 +136,43 @@ public class IMBEFrame
 		
 		IMBEInterleave.deinterleave( mFrame );
 
-		int errorCountCoset0 = Golay23.checkAndCorrect( mFrame, 0 );
+		mErrorCountCoset0 = Golay23.checkAndCorrect( mFrame, 0 );
 		
 		derandomize();
 
-		int errorCountTotal = errorCountCoset0 + detectAndCorrectErrors();
+		mErrorCountTotal = mErrorCountCoset0 + detectAndCorrectErrors();
 		
 		mModelParameters.setFundamentalFrequency( FundamentalFrequency
 				.fromValue( mFrame.getInt( VECTOR_B0 ) ) );
+	}
+	
+	public void dispose()
+	{
+		mFrame = null;
+		mModelParameters = null;
+	}
+	
 
+	/**
+	 * Extracts parameters from the previous frame.  After executing this
+	 * method, the previous frame can be disposed.
+	 */
+	public void setPreviousFrameParameters( IMBEFrame previous )
+	{
 		mModelParameters.setErrors( previous.getModelParameters().getErrorRate(), 
-				errorCountCoset0, errorCountTotal );
+				mErrorCountCoset0, mErrorCountTotal );
 
 		/* If we have too many errors and/or the fundamental frequency is invalid 
 		 * perform a repeat by copying the model parameters from previous frame  */
 		if( mModelParameters.repeatRequired() )
 		{
-//			System.out.println( "IMBEFrame - repeating previous frame" );
 			mModelParameters.copy( previous.getModelParameters() );
 		}
 		else
 		{
-			mModelParameters.setVoicingDecisions( 
-					getVoicingDecisions( mFrame, mModelParameters.getL() ) );
+			int L = mModelParameters.getL();
+			
+			mModelParameters.setVoicingDecisions( getVoicingDecisions( mFrame, L ) );
 			
 			calculateSpectralAmplitudes( previous );
 			
@@ -167,9 +185,9 @@ public class IMBEFrame
 	}
 
 	/**
-	 * Empty private constructor to use with getDefault() methods
+	 * Empty protected constructor to use with getDefault() methods
 	 */
-	private IMBEFrame( FundamentalFrequency fundamental )
+	protected IMBEFrame( FundamentalFrequency fundamental )
 	{
 		mModelParameters = new IMBEModelParameters( fundamental );
 	}
@@ -278,7 +296,7 @@ public class IMBEFrame
 		{
 			enhancedAmplitudes[ l ] = enhancedAmplitudes[ l ] * scaleFactor;
 		}
-		
+
 		mModelParameters.setEnhancedSpectralAmplitudes( enhancedAmplitudes );
 
 		/* Algorithm #111 - calculate local energy */
@@ -312,8 +330,6 @@ public class IMBEFrame
 		{
 			double energy = Math.pow( mModelParameters.getLocalEnergy(), 0.375 );
 
-//			if( mModelParameters.getErrorRate() <= 0.0125 &&
-//					mModelParameters.getErrorCountCoset4() == 0 )
 			if( mModelParameters.getErrorRate() <= 0.0125 &&
 			mModelParameters.getErrorCountTotal() == 0 )
 			{
@@ -449,13 +465,14 @@ public class IMBEFrame
 
 			/* Copy the highest index value to the newly added indexes */
 			double highest = elements[ elements.length - 1 ];
-			
+
+			/* Algorithm #79 - set all new indexes to previous highest index */
 			for( int x = elements.length; x < resized.length; x++ )
 			{
 				resized[ x ] = highest;
 			}
 
-			/* Set index 0 to 1.0 */
+			/* Algorithm #78 - set previous index 0 to 1.0 */
 			resized[ 0 ] = 1.0;
 			
 			return resized;
@@ -561,11 +578,9 @@ public class IMBEFrame
 	 */
 	public static boolean[] getVoicingDecisions( BinaryFrame frame, int L )
 	{
-		int size = L + 1;
-		
-		boolean[] decisions = new boolean[ size ];
+		boolean[] decisions = new boolean[ L + 1 ];
 
-		for( int x = 1; x < size; x++ )
+		for( int x = 1; x <= L; x++ )
 		{
 			decisions[ x ] = frame.get( VOICE_DECISION_INDEX[ x ] );
 		}
@@ -825,14 +840,10 @@ public class IMBEFrame
 
 		/**
 		 * Produces a map of 256 FFT bins and their mapping to each of the L 
-		 * bands.  The 256 bins are laid out from -128 to 0 to 127.  Each l 
-		 * band, from 1 to L has a minimum bin a and a maximum bin b, where the 
-		 * set of l bands covers bins 0 to 127 for the real value and from
-		 * -1 to -128 for the imaginary values.  The returned array will contain
-		 * mirrored halves resembling the following: 
+		 * bands.  This is aligned with the output of the JTransforms dft 
+		 * calculation where:
 		 * 
-		 * INDEX 0  1  2  3  4  5    6   ... 127  128 129 ... 249 250 251 252 253 254 255
-		 * VALUE 0  0  0  L  L  L-1  L-1 ...   0   0   0  ... L-1 L-1 L   L   0   0   0
+		 * 0, 0, 1, 1, ...
 		 */
 		public int[] getFFTBinToLBandMap()
 		{
@@ -845,8 +856,9 @@ public class IMBEFrame
 			{
 				for( int x = a[ l ]; x < b[ l ]; x++ )
 				{
-					bins[ 128 + x ] = l;
-					bins[ 128 - x ] = l;
+					int index = 2 * x;
+					bins[ index ] = l;
+					bins[ index + 1 ] = l;
 				}
 			}
 			
@@ -1141,30 +1153,28 @@ public class IMBEFrame
 			}
 
 			/* Algorithm #73 & #74 - perform inverse DCT on each of the J-block 
-			 * sets of coefficients.  Use the number of coefficients 
-			 * (ie point size) in the range 1 - 10 to select the pre-constructed 
-			 * DCT engine from the DCT map.  Place inverse DCT results in the 
+			 * sets of coefficients.  Place inverse DCT results in the 
 			 * residuals array */
-			int pointer = 1;
+			int pointer = 0;
 
 			for( int i = 0; i < 6; i++ ) /* J-Block index */
 			{
-				int Ji = coefficients[ i ].length;
+				int Ji = mBlockHarmonicAllocations[ i ].length;
 				
 				for( int j = 0; j < Ji; j++ )
 				{
+					pointer++;
+					
 					/* Cosine of 0 is 1, so handle index 0 more efficiently */
-					residuals[ pointer + j ] = coefficients[ i ][ 0 ];
+					residuals[ pointer ] = coefficients[ i ][ 0 ];
 
 					for( int k = 1; k < Ji; k++ )
 					{
-						residuals[ pointer + j ] += 2.0 * coefficients[ i ][ k ] *
+						residuals[ pointer ] += 2.0 * coefficients[ i ][ k ] *
 						Math.cos( ( Math.PI * (double)k * ( (double)j + 0.5 ) ) / 
 								(double)Ji );
 					}
 				}
-
-				pointer += Ji;
 			}
 			
 			return residuals;
@@ -1231,13 +1241,13 @@ public class IMBEFrame
 				/* Arrays are 0-indexed starting with harmonic b3 */
 				int index = harmonic - 3;
 				
-				int value = frame.getInt( mQuantizedValueIndices[ index ] );
-
-				if( value == 0 )
+				if( mQuantizedValueIndices[ index ].length == 0 )
 				{
 					return 0.0;
 				}
 				
+				int value = frame.getInt( mQuantizedValueIndices[ index ] );
+
 				double quantizedValue = (double)value + 
 					QUANTIZER_OFFSET[ mQuantizedValueIndices[ index ].length ];
 				
@@ -1259,5 +1269,19 @@ public class IMBEFrame
 	public enum Bands
 	{
 		K03,K04,K05,K06,K07,K08,K09,K10,K11,K12;
+	}
+	
+	public static void main( String[] args )
+	{
+		FundamentalFrequency ff = FundamentalFrequency.W_DEFAULT;
+		
+		int[] a = ff.getLBandFFTBinMinimums();
+		int[] b = ff.getLBandFFTBinMaximums();
+		
+		System.out.println( "A:" + Arrays.toString( a ) );
+		System.out.println( "B:" + Arrays.toString( b ) );
+		System.out.println( "Map:" + Arrays.toString( ff.getFFTBinToLBandMap() ) );
+		
+		
 	}
 }
