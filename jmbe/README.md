@@ -41,19 +41,17 @@ Compiling and using the Library
 	4.  Checkout a copy of the jmbe library.
 	
 	5.  In the build folder (jmbe/build) execute the command 'ant'.  This will
-	compile and build the library and place the library in the (jmbe/library)
-	folder.
+	compile and build all products and place them in the jmbe/library folder.
 	
 	6.  Place the compiled library (jmbe-x.x.x.jar) on the classpath of your
-	java program so that it can be discovered by the java AudioSystem on 
-	startup.  If you are adding the jmbe library to an existing program, simply
-	copy the libaray to the same folder as the program you are using. 
+	java program or in the same directory as your java program, so that can be 
+	discovered at runtime. 
 	
 Scripted downloading and compiling the library for end-users
 
-	1.  Run the ant target 'create_builder' to create a zip file that will 
-	clone the jmbe git repository locally, compile the code and generate the 
-	library jar file, using windows or linux scripts.
+	1.  Run the ant target 'create_builder' to create a zip file for end users 
+	that will clone the jmbe git repository locally, compile the code and 
+	generate the library jar file, using windows or linux scripts.
 	
 Third-Party libraries
 
@@ -68,11 +66,12 @@ Third-Party libraries
 	Libraries used by jbme:
 		
 	Simple Logging Facade for Java: http://www.slf4j.org/
+	
 	JTransforms FFT: https://sites.google.com/site/piotrwendykier/software/jtransforms
 
 Using the jmbe audio conversion library in your own java program
 
-	1. Run the ant task 'interface' to generate the generic audio converter 
+	1. Run the ant task 'create-interface' to generate the generic audio converter 
 	interfaces library and place the library on your class path.
 	
 	2. Add the following code to your program
