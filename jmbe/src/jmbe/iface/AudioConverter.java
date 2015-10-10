@@ -14,9 +14,21 @@ public interface AudioConverter
 	public String getCodecName();
 
 	/**
+	 * Converts frameDate into the audio format specified by the 
+	 * getConvertedAudioFormat() method
+	 * 
+	 * This method is deprecated in version 0.3.0 in favor of returning 
+	 * primitive (float) samples.
+	 * 
+	 * @see jmbe.iface.AudioConverer.decode()
+	 */
+	@Deprecated
+	public byte[] convert( byte[] frameDate );
+	
+	/**
 	 * Converts frameData into the audio format specified by the 
 	 * getConvertedAudioFormat() method */
-	public byte[] convert( byte[] frameData );
+	public float[] decode( byte[] frameData );
 
 	/**
 	 * Output (converted) audio format provided by this audio converter.

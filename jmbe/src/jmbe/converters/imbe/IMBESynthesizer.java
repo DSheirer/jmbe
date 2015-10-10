@@ -139,47 +139,71 @@ public class IMBESynthesizer
 	 *  
 	 *  @return ByteBuffer containing the audio sample bytes
 	 */
-	public ByteBuffer getAudio( IMBEFrame frame )
+	public float[] getAudio( IMBEFrame frame )
 	{
 		frame.setPreviousFrameParameters( mPreviousFrame );
-		
-		/* Little-endian byte buffer with room for 160 x 2-byte short samples */
-		ByteBuffer buffer = ByteBuffer.allocate( 320 * ( mUpsample ? 6 : 1 ) )
-					.order( ByteOrder.LITTLE_ENDIAN );
-
-		ShortBuffer shortBuffer = buffer.asShortBuffer();
 		
 		double[] unvoiced = getUnvoiced( frame );
 		
 		double[] voiced = getVoiced( frame );
 		
+		float[] audio = null;
+		
 		/* Algorithm #142 - combine voiced and unvoiced audio samples to form
 		 * the completed audio samples. */
 		if( mUpsample )
 		{
+			/* Upsample from 8 kHz to 48 kHz - 6 samples per imbe sample */
+			audio = new float[ 960 ];
+			
 			for( int x = 0; x < 160; x++ )
 			{
 				float sample = (float)( voiced[ x ] + unvoiced[ x ] );
 					
 				float[] upsamples = mUpsampler.interpolate( sample );
-				
-				for( float upsample: upsamples )
-				{
-					shortBuffer.put( (short)upsample );
-				}
+
+				System.arraycopy( upsamples, 0, audio, ( x * 6 ), upsamples.length );
 			}
 		}
 		else
 		{
+			audio = new float[ 160 ];
+			
 			for( int x = 0; x < 160; x++ )
 			{
-				shortBuffer.put( (short)( voiced[ x ] + unvoiced[ x ] ) );
+				audio[ x ] = (float)( voiced[ x ] + unvoiced[ x ] );
 			}
 		}
 
 		mPreviousFrame.dispose();
 		
 		mPreviousFrame = frame;
+
+		return audio;
+	}
+
+	/**
+	 * Converts the imbe frame to 16-bit little endian audio samples and a byte
+	 * array suitable for writing to an audio dataline.
+	 * 
+	 * This method is deprecated in version 0.3.0.  Use the getAudio(frame)
+	 * method instead.
+	 */
+	@Deprecated
+	public ByteBuffer getConvertedAudio( IMBEFrame frame )
+	{
+		float[] audio = getAudio( frame );
+		
+		/* Little-endian byte buffer with room for 160 x 2-byte short samples */
+		ByteBuffer buffer = ByteBuffer.allocate( audio.length * 2 )
+					.order( ByteOrder.LITTLE_ENDIAN );
+		
+		ShortBuffer shortBuffer = buffer.asShortBuffer();
+
+		for( float sample: audio )
+		{
+			shortBuffer.put( (short)( sample * Short.MAX_VALUE ) );
+		}
 
 		return buffer;
 	}

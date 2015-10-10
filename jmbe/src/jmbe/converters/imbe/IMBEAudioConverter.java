@@ -37,7 +37,9 @@ public class IMBEAudioConverter implements AudioConverter
 	
 	public static final String CODEC_NAME = "IMBE";
 	
-	private IMBESynthesizer mSynthesizer = new IMBESynthesizer( true );
+	public static final boolean UPSAMPLE_TO_48KHZ = true;
+	
+	private IMBESynthesizer mSynthesizer = new IMBESynthesizer( UPSAMPLE_TO_48KHZ );
 	
 	public IMBEAudioConverter()
 	{
@@ -47,15 +49,32 @@ public class IMBEAudioConverter implements AudioConverter
 	{
 	}
 	
+	/**
+	 * Converts the imbe frame data into PCM audio samples a 8kHz rate or if
+	 * upsampling, 48 kHz audio rate.
+	 */
+	public float[] decode( byte[] frameData )
+	{
+		IMBEFrame frame = new IMBEFrame( frameData );
+		
+		return mSynthesizer.getAudio( frame );
+	}
+
+	/**
+	 * This method is deprecated in version 0.3.0.  Use the decode() method
+	 * instead.
+	 */
+	@Override
+	@Deprecated
 	public byte[] convert( byte[] frameData )
 	{
 		IMBEFrame frame = new IMBEFrame( frameData );
 		
-		ByteBuffer converted = mSynthesizer.getAudio( frame );
+		ByteBuffer converted = mSynthesizer.getConvertedAudio( frame );
 		
 		return converted.array();
 	}
-
+	
 	/**
 	 * CODEC Name
 	 */

@@ -1,3 +1,8 @@
+
+0.3.0 20151010 Changed the return type for audio conversion from a byte buffer 
+	  to a float array and deprecated the decode() method.  Use the convert()
+	  method from this point forward.
+
 0.2.0 20150606 Restructured converter to remove the java audio stream components
 	  in favor of a simplified conversion process.  Added scripted builder
 	  product that users can download, unzip, and execute a windows or linux

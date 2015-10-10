@@ -106,7 +106,7 @@ Using the JMBE audio conversion library in your own java program
 
 		if( converter != null )
 		{
-			byte[] convertedAudio = converter.convert( unconvertedAudio );
+			float[] convertedAudio = converter.decode( imbeFrame );
 		}	
 		
 		

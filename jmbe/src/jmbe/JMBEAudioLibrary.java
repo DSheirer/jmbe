@@ -34,7 +34,7 @@ public class JMBEAudioLibrary implements AudioConversionLibrary
 	@Override
 	public int getMinorVersion()
 	{
-		return 2;
+		return 3;
 	}
 
 	@Override
