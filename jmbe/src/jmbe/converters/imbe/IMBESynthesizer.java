@@ -93,6 +93,8 @@ public class IMBESynthesizer
 		0.80,0.82,0.84,0.86,0.88,0.90,0.92,0.94,0.96,0.98
 	};
 	
+	public static final double AUDIO_SCALOR = 1.0d / 8192.0d;
+	
 	private WhiteNoiseGenerator mWhiteNoise = new WhiteNoiseGenerator();
 	
 	private RandomTwoPiGenerator mRandom2PI = new RandomTwoPiGenerator();
@@ -158,7 +160,7 @@ public class IMBESynthesizer
 			
 			for( int x = 0; x < 160; x++ )
 			{
-				float sample = (float)( voiced[ x ] + unvoiced[ x ] );
+				float sample = (float)( ( voiced[ x ] + unvoiced[ x ] ) * AUDIO_SCALOR );
 					
 				float[] upsamples = mUpsampler.interpolate( sample );
 

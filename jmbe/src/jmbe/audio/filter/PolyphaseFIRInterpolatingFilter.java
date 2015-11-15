@@ -147,38 +147,4 @@ public class PolyphaseFIRInterpolatingFilter
 			return (float)( accumulator * mGain );
 		}
 	}
-	
-//	public static void main( String[] args )
-//	{
-//		int interpolation = 6;
-//		
-//		PolyphaseFIRInterpolatingFilter p = 
-//			new PolyphaseFIRInterpolatingFilter( IMBESynthesizer.INTERPOLATION_TAPS, interpolation );
-//		
-//		Oscillator o = new Oscillator( 500, 8000 );
-//
-//		int iterations = 40;
-//		
-//		float[] in = new float[ iterations ];
-//		float[] out = new float[ iterations * interpolation ];
-//
-//		int inIndex = 0;
-//		int outIndex = 0;
-//		
-//		for( int x = 0; x < iterations; x++ )
-//		{
-//			float next = o.nextFloat();
-//
-//			in[ inIndex++ ] = next;
-//			
-//			float[] samples = p.interpolate( next );
-//			
-//			System.arraycopy( samples, 0, out, outIndex, samples.length );
-//			
-//			outIndex += interpolation;
-//		}
-//
-//		mLog.debug( "In: " + Arrays.toString( in ) );
-//		mLog.debug( "Out: " + Arrays.toString( out ) );
-//	}
 }

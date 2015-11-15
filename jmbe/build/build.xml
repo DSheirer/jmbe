@@ -6,7 +6,7 @@
   <!-- version properties -->
   <property name="major" value="0"/>
   <property name="minor" value="3"/>
-  <property name="build" value="0"/>
+  <property name="build" value="1"/>
   
   <!-- build properties -->
   <property name="root_path" location=".."/>

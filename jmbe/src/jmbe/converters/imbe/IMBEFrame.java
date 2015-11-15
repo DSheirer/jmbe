@@ -1273,15 +1273,16 @@ public class IMBEFrame
 	
 	public static void main( String[] args )
 	{
-		FundamentalFrequency ff = FundamentalFrequency.W_DEFAULT;
+		byte[] s = javax.xml.bind.DatatypeConverter.parseHexBinary("6C42E85DE2E8269363D981F9BE23B18AE006");
+
+		StringBuilder sb = new StringBuilder();
 		
-		int[] a = ff.getLBandFFTBinMinimums();
-		int[] b = ff.getLBandFFTBinMaximums();
+		for( byte b: s )
+		{
+			sb.append( String.format( "%02x", b ) );
+		}
 		
-		System.out.println( "A:" + Arrays.toString( a ) );
-		System.out.println( "B:" + Arrays.toString( b ) );
-		System.out.println( "Map:" + Arrays.toString( ff.getFFTBinToLBandMap() ) );
-		
+		System.out.println( sb.toString().toUpperCase() );
 		
 	}
 }
