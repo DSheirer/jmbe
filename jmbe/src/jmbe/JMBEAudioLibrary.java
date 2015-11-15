@@ -40,8 +40,7 @@ public class JMBEAudioLibrary implements AudioConversionLibrary
 	@Override
 	public int getBuildVersion()
 	{
-		// TODO Auto-generated method stub
-		return 0;
+		return 1;
 	}
 
 	@Override
