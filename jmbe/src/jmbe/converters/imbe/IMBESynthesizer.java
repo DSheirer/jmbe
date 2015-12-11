@@ -93,7 +93,7 @@ public class IMBESynthesizer
 		0.80,0.82,0.84,0.86,0.88,0.90,0.92,0.94,0.96,0.98
 	};
 	
-	public static final double AUDIO_SCALOR = 1.0d / 8192.0d;
+	public static final double AUDIO_SCALOR = 1.0d / 32768.0d;
 	
 	private WhiteNoiseGenerator mWhiteNoise = new WhiteNoiseGenerator();
 	
@@ -115,9 +115,13 @@ public class IMBESynthesizer
 	 */
 	public IMBESynthesizer()
 	{
-		
 	}
 	
+	/**
+	 * Synthesizes 8 kHz or 48 kHz 16-bit audio from IMBE audio frames
+	 * 
+	 * @param upsample - true for 48 kHz or false for 8 kHz sample rate
+	 */
 	public IMBESynthesizer( boolean upsample )
 	{
 		this();
@@ -173,7 +177,7 @@ public class IMBESynthesizer
 			
 			for( int x = 0; x < 160; x++ )
 			{
-				audio[ x ] = (float)( voiced[ x ] + unvoiced[ x ] );
+				audio[ x ] = (float)( ( voiced[ x ] + unvoiced[ x ] ) * AUDIO_SCALOR );
 			}
 		}
 
