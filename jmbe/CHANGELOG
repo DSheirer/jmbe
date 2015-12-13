@@ -1,4 +1,6 @@
 
+0.3.2 20151213 Updated gain value that was introduced in 0.3.1
+
 0.3.1 20151115 Resolved issue with improper scaling of decoded audio that was
       producing static instead of voice
 
