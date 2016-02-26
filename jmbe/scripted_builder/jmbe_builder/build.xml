@@ -3,6 +3,7 @@
 
     <!-- Build Properties -->
     <property name="jgit_libs" location="jgit"/>
+    <property name="root_repository" location=".."/>
     <property name="local_repository" location="../jmbe"/>
     <property name="jmbe_root" location="${local_repository}/.git/jmbe/"/>
     <property name="jmbe_build_script" location="${jmbe_root}/build/build.xml"/>
@@ -33,16 +34,30 @@
     
     <target name="library" depends="clean" description="Download and compile JMBE Library" >
 
+      <echo />
+      <echo>Downloading JMBE source code ... this may take a few moments</echo>
+      <echo />
+      <echo>NOTE: please disregard any SLF4J error messages</echo>
+      <echo />
+
       <!-- Clone/checkout the jmbe library source code -->
       <git-clone uri="https://github.com/DSheirer/jmbe" />
+
+      <echo>JMBE source code has been downloaded.  Compiling the JMBE library</echo>
       
       <!-- Compile the source code -->
       <ant antfile="${jmbe_build_script}" target="create-library" />
       
+      <echo />
+
       <!-- Copy the compiled jmbe library back to the starting directory -->
       <copy todir=".." >
 	<fileset dir="${jmbe_root}/library/" includes="jmbe-?.?.?.jar" />
       </copy>
+      
+      <echo />
+      <echo>Finished.  Compiled JMBE library copied to: ${root_repository}</echo> 
+      <echo />
       
     </target>
 
