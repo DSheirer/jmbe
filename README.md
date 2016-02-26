@@ -1,13 +1,13 @@
 Copyright (C) 2015 Dennis Sheirer
 
-jmbe - Java Multi-Band Excitation library 
+# jmbe - Java Multi-Band Excitation library 
 
   Audio conversion library for decoding MBE encoded audio frames.  
   
   Currently supports conversion of IMBE 144-bit/20 millisecond audio frames to
   48 kHz 16-bit mono PCM encoded audio.
 
-PATENT NOTICE
+# PATENT NOTICE
 
  This source code is provided for educational purposes only.  It is a written 
  description of how certain voice encoding/decoding algorithms could be 
@@ -18,8 +18,14 @@ PATENT NOTICE
 
  Note: this patent notice is verbatim from the mbelib library README at
  https://github.com/szechyjs/mbelib
+ 
+ MBE and IMBE trademarks are the property of their respective owners.
 
-Compiling and using the Library
+# Easy downloading and compiling the library for end-users
+
+Download the **jmbe_builder.zip** or **jmbe_builder.tar.gz** from the [RELEASE](https://github.com/DSheirer/jmbe/releases)s tab
+
+# Compiling and using the Library
 
 	1. Install the Java 7 (or higher) Java Development Kit (JDK). Note: this is
 	different from the Java Runtime Environment (JRE) that most users have 
@@ -45,13 +51,7 @@ Compiling and using the Library
 	java program or in the same directory as your java program, so that can be 
 	discovered at runtime. 
 	
-Scripted downloading and compiling the library for end-users
-
-	1.  Run the ant target 'create_builder' to create a zip file for end users 
-	that will clone the jmbe git repository locally, compile the code and 
-	generate the library jar file, using windows or linux scripts.
-	
-Third-Party libraries
+# Third-Party libraries
 
 	JMBE uses a third-party logging library and the JTransforms FFT library. 
 	These libraries are not included in the default output products in order to 
@@ -67,7 +67,7 @@ Third-Party libraries
 	
 	JTransforms FFT: https://sites.google.com/site/piotrwendykier/software/jtransforms
 
-Using the JMBE audio conversion library in your own java program
+# Using the JMBE audio conversion library in your own java program
 
 	1. Run the ant task 'create-interface' to generate the generic audio converter 
 	interfaces library and place the library on your class path.
