@@ -5,11 +5,14 @@ import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Random;
 
+import jmbe.audio.JMBEAudioFormat;
 import jmbe.audio.filter.PolyphaseFIRInterpolatingFilter;
 
 import org.jtransforms.fft.DoubleFFT_1D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.sound.sampled.AudioFormat;
 
 /*******************************************************************************
  *     jmbe - Java MBE Library 
@@ -132,6 +135,11 @@ public class IMBESynthesizer
 		{
 			mUpsampler = new PolyphaseFIRInterpolatingFilter( INTERPOLATION_TAPS, 6 );
 		}
+	}
+
+	public AudioFormat getOutputAudioFormat()
+	{
+		return mUpsample ? JMBEAudioFormat.PCM_SIGNED_48KHZ_16BITS : JMBEAudioFormat.PCM_SIGNED_8KHZ_16BITS;
 	}
 
 	/**

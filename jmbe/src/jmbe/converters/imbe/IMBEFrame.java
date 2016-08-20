@@ -1,7 +1,5 @@
 package jmbe.converters.imbe;
 
-import java.util.Arrays;
-
 import jmbe.binary.BinaryFrame;
 import jmbe.edac.Golay23;
 import jmbe.edac.Hamming15;
