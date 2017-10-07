@@ -1268,19 +1268,4 @@ public class IMBEFrame
 	{
 		K03,K04,K05,K06,K07,K08,K09,K10,K11,K12;
 	}
-	
-	public static void main( String[] args )
-	{
-		byte[] s = javax.xml.bind.DatatypeConverter.parseHexBinary("6C42E85DE2E8269363D981F9BE23B18AE006");
-
-		StringBuilder sb = new StringBuilder();
-		
-		for( byte b: s )
-		{
-			sb.append( String.format( "%02x", b ) );
-		}
-		
-		System.out.println( sb.toString().toUpperCase() );
-		
-	}
 }
