@@ -96,7 +96,7 @@ compiling the jmbe library code.
 * Copy the compiled JMBE library jar to the same folder where your application is located and then start the application
 like normal.  The JMBE library will be automatically discovered at runtime.
 	
-# Using the JMBE audio conversion library in your own java program
+# Software Developers - Using the JMBE audio conversion library in your own java program
 
 * Follow the same instructions for downloading the source code above.  Use the following command to build the API:
 
