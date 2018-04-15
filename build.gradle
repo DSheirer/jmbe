@@ -43,6 +43,7 @@ jar {
                    'Implementation-Version': project.version,
                    'Website': 'https://github.com/DSheirer/jmbe')
     }
+    from 'LICENSE'
 }
 
 task api(type: Jar) {
@@ -53,6 +54,7 @@ task api(type: Jar) {
     }
     baseName = project.name + "-api"
     from sourceSets.api.output
+    from 'LICENSE'
 }
 
 task wrapper(type: Wrapper) {
