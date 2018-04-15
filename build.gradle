@@ -1,0 +1,63 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+description = 'JMBE Audio Library build script'
+version = '0.3.4'
+sourceCompatibility = 1.8
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/main'
+            srcDir 'src/api'
+        }
+    }
+    api {
+        java {
+            srcDir 'src/api'
+        }
+    }
+}
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+dependencies {
+    compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'com.github.wendykierp:JTransforms:3.1'
+    compile 'pl.edu.icm:JLargeArrays:1.6'
+}
+
+jar {
+    manifest {
+        attributes('Implementation-Title': project.name,
+                   'Implementation-Version': project.version,
+                   'Website': 'https://github.com/DSheirer/jmbe')
+    }
+    from 'LICENSE'
+}
+
+task api(type: Jar) {
+    manifest {
+        attributes('Implementation-Title': project.name + ' API',
+                   'Implementation-Version': project.version,
+                   'Website': 'https://github.com/DSheirer/jmbe')
+    }
+    baseName = project.name + "-api"
+    from sourceSets.api.output
+    from 'LICENSE'
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.3.1'
+}
+
