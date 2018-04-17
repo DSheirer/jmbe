@@ -7,7 +7,7 @@ repositories {
 }
 
 description = 'JMBE Audio Library build script'
-version = '0.3.4'
+version = '0.3.3'
 sourceCompatibility = 1.8
 
 sourceSets {
@@ -40,8 +40,8 @@ dependencies {
 jar {
     manifest {
         attributes('Implementation-Title': project.name,
-                   'Implementation-Version': project.version,
-                   'Website': 'https://github.com/DSheirer/jmbe')
+                   'Version': project.version,
+                   'Site': 'https://github.com/DSheirer/jmbe')
     }
     from 'LICENSE'
 }

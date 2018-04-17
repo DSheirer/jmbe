@@ -4,8 +4,8 @@ import javax.sound.sampled.AudioFormat;
 
 import jmbe.audio.JMBEAudioFormat;
 import jmbe.converters.imbe.IMBEAudioConverter;
-import iface.AudioConversionLibrary;
-import iface.AudioConverter;
+import jmbe.iface.AudioConversionLibrary;
+import jmbe.iface.AudioConverter;
 
 public class JMBEAudioLibrary implements AudioConversionLibrary
 {
