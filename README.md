@@ -44,9 +44,9 @@ This should respond with the java version.
 
 * Unzip the source code file with a tool like 7-Zip or using the Windows File Manager (right-click on file)
 
-* Using the command prompt, change to the directory where you downloaded and unzipped the source code (jmbe-0.3.4.zip in this example):
+* Using the command prompt, change to the directory where you downloaded and unzipped the source code (jmbe-0.3.3a.zip in this example):
 
-> cd C:\Users\Denny\Downloads\jmbe-0.3.4\jmbe
+> cd C:\Users\Denny\Downloads\jmbe-0.3.3a\jmbe
 
 * Run the build script
 
@@ -58,7 +58,7 @@ compiling the jmbe library code.
 
 * The compiled JMBE library will be located in a sub-folder named '\build\libs', for example:
 
-> C:\Users\Denny\Downloads\jmbe-0.3.4\jmbe\build\libs\jmbe-0.3.4.jar
+> C:\Users\Denny\Downloads\jmbe-0.3.4\jmbe\build\libs\jmbe-0.3.3.jar
 
 * Copy the compiled JMBE library jar to the same folder where your application is located and then start the application
 like normal.  The JMBE library will be automatically discovered at runtime.
@@ -79,7 +79,7 @@ This should respond with the java version.
 
 * In the terminal window, change to the directory where you downloaded and unzipped the source code (jmbe-0.3.4.zip in this example):
 
-> denny@denny-desktop:~$ cd Downloads\jmbe-0.3.4\jmbe
+> denny@denny-desktop:~$ cd Downloads\jmbe-0.3.3a\jmbe
 
 * Run the build script
 
@@ -91,7 +91,7 @@ compiling the jmbe library code.
 
 * The compiled JMBE library will be located at:
 
-> ~\Downloads\jmbe-0.3.4\jmbe\build\libs\jmbe-0.3.4.jar
+> ~\Downloads\jmbe-0.3.4\jmbe\build\libs\jmbe-0.3.3.jar
 
 * Copy the compiled JMBE library jar to the same folder where your application is located and then start the application
 like normal.  The JMBE library will be automatically discovered at runtime.
