@@ -23,7 +23,7 @@ import java.nio.ByteBuffer;
 import javax.sound.sampled.AudioFormat;
 
 import jmbe.audio.JMBEAudioFormat;
-import iface.AudioConverter;
+import jmbe.iface.AudioConverter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
