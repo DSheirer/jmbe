@@ -18,15 +18,13 @@ package jmbe.converters.imbe;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  ******************************************************************************/
 
-import java.nio.ByteBuffer;
-
-import javax.sound.sampled.AudioFormat;
-
 import jmbe.audio.JMBEAudioFormat;
 import jmbe.iface.AudioConverter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.sound.sampled.AudioFormat;
+import java.nio.ByteBuffer;
 
 public class IMBEAudioConverter implements AudioConverter
 {
