@@ -18,71 +18,57 @@ package jmbe.converters.imbe;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  ******************************************************************************/
 
-import jmbe.audio.JMBEAudioFormat;
-import jmbe.iface.AudioConverter;
+import jmbe.audio.AudioWithoutMetadata;
+import jmbe.iface.IAudioConverter;
+import jmbe.iface.IAudioWithMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sound.sampled.AudioFormat;
-import java.nio.ByteBuffer;
-
-public class IMBEAudioConverter implements AudioConverter
+public class IMBEAudioConverter implements IAudioConverter
 {
-    private final static Logger mLog =
-            LoggerFactory.getLogger(IMBEAudioConverter.class);
-
-    public static final int IMBE_FRAME_LENGTH = 18;
+    private final static Logger mLog = LoggerFactory.getLogger(IMBEAudioConverter.class);
 
     public static final String CODEC_NAME = "IMBE";
 
-    private static final boolean UPSAMPLE_TO_48KHZ = true;
-
     private IMBESynthesizer mSynthesizer;
 
-    public IMBEAudioConverter(float sampleRate)
+    public IMBEAudioConverter()
     {
-        if (sampleRate == JMBEAudioFormat.PCM_8KHZ_RATE)
-        {
-            mSynthesizer = new IMBESynthesizer();
-        }
-        else if (sampleRate == JMBEAudioFormat.PCM_48KHZ_RATE)
-        {
-            mSynthesizer = new IMBESynthesizer(UPSAMPLE_TO_48KHZ);
-        }
-        else
-        {
-            throw new IllegalArgumentException("Sample rate [" + sampleRate + "] is not supported");
-        }
+        mSynthesizer = new IMBESynthesizer();
     }
 
     public void dispose()
     {
     }
 
+    @Override
+    public void reset()
+    {
+        mSynthesizer.reset();
+    }
+
     /**
-     * Converts the imbe frame data into PCM audio samples a 8kHz rate or if
-     * upsampling, 48 kHz audio rate.
+     * Converts imbe frame data into PCM audio samples at 8kHz 16-bit rate
      */
-    public float[] decode(byte[] frameData)
+    public float[] getAudio(byte[] frameData)
     {
         IMBEFrame frame = new IMBEFrame(frameData);
-
         return mSynthesizer.getAudio(frame);
     }
 
     /**
-     * This method is deprecated in version 0.3.0.  Use the decode() method
-     * instead.
+     * Converts imbe frame data into PCM audio samples at 8kHz 16-bit rate
+     *
+     * Note: this method is for compatibility with the AMBE synthesizer and does not return any metadata.
+     *
+     * @param frameData byte array for an audio frame
+     * @return audio with empty metadata.
      */
     @Override
-    @Deprecated
-    public byte[] convert(byte[] frameData)
+    public IAudioWithMetadata getAudioWithMetadata(byte[] frameData)
     {
         IMBEFrame frame = new IMBEFrame(frameData);
-
-        ByteBuffer converted = mSynthesizer.getConvertedAudio(frame);
-
-        return converted.array();
+        return AudioWithoutMetadata.create(mSynthesizer.getAudio(frame));
     }
 
     /**
@@ -92,11 +78,5 @@ public class IMBEAudioConverter implements AudioConverter
     public String getCodecName()
     {
         return CODEC_NAME;
-    }
-
-    @Override
-    public AudioFormat getConvertedAudioFormat()
-    {
-        return mSynthesizer.getOutputAudioFormat();
     }
 }

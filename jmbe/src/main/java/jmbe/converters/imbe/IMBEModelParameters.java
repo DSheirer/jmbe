@@ -1,350 +1,202 @@
+/*
+ * ******************************************************************************
+ * Copyright (C) 2015-2019 Dennis Sheirer
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * *****************************************************************************
+ */
+
 package jmbe.converters.imbe;
 
-import java.util.Arrays;
-
-import jmbe.converters.imbe.IMBEFrame.FundamentalFrequency;
-
+import jmbe.converters.MBEModelParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/*******************************************************************************
- *     jmbe - Java MBE Library
- *     Copyright (C) 2015 Dennis Sheirer
- * 
- *     This program is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
- * 
- *     This program is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
- * 
- *     You should have received a copy of the GNU General Public License
- *     along with this program.  If not, see <http://www.gnu.org/licenses/>
- ******************************************************************************/
+import java.util.Arrays;
 
-
-public class IMBEModelParameters
+/**
+ * IMBE audio frame model parameters used for synthesizing audio sample data.
+ */
+public class IMBEModelParameters extends MBEModelParameters
 {
-	private final static Logger mLog = 
-			LoggerFactory.getLogger( IMBEModelParameters.class );
-	
-	private static final int MAX_HEADROOM_THRESHOLD = 3;
-	
-	private FundamentalFrequency mFundamentalFrequency;
-	
-	private boolean[] mVoicingDecisions;
-	
-	private double[] mLog2SpectralAmplitudes;
-	private double[] mSpectralAmplitudes;
-	private double[] mEnhancedSpectralAmplitudes;
-	
-	private double mErrorRate = 0.0;  //ER
-	private double mLocalEnergy = 75000.0; //SE default
+    private final static Logger mLog = LoggerFactory.getLogger(IMBEModelParameters.class);
 
-	private int mErrorCountCoset0 = 0;  //E0
-	private int mErrorCountCoset4 = 0;  //E4
-	private int mErrorCountTotal = 0;  //ET
-	private int mRepeatCount = 0;
-	private int mAmplitudeThreshold = 20480;//YM default
+    private static final int MAX_HEADROOM_THRESHOLD = 3;
 
-	/**
-	 * Constructs a default set of model parameters with the voicing 
-	 * decisions set to all false and the mSpectralAmplitudes set to all 1.0
-	 * and sized to the L argument.
-	 * 
-	 */
-	public IMBEModelParameters( FundamentalFrequency frequency )
-	{
-		mFundamentalFrequency = frequency;
+    private int mErrorCountCoset0 = 0;  //E0
+    private int mErrorCountCoset4 = 0;  //E4
 
-		int lplus1 = mFundamentalFrequency.getL() + 1;
-		
-		mVoicingDecisions = new boolean[ lplus1 ];
-		
-		mSpectralAmplitudes = new double[ lplus1 ];
+    /**
+     * Constructs a default set of model parameters with the voicing
+     * decisions set to all false and the mSpectralAmplitudes set to all 1.0
+     * and sized to the L argument.
+     */
+    public IMBEModelParameters(IMBEFundamentalFrequency frequency)
+    {
+        super(frequency);
 
-		/* Initialized to all zeros */
-		mEnhancedSpectralAmplitudes = new double[ lplus1 ];
-		
-		mLog2SpectralAmplitudes = new double[ lplus1 ];
-		
-		for( int x = 0; x < lplus1; x++ )
-		{
-			mVoicingDecisions[ x ] = false;
-			mSpectralAmplitudes[ x ] = 1.0d;
-		}
-	}
-	
-	public IMBEModelParameters()
-	{
-	}
-	
-	/**
-	 * Indicates if the current error rate exceeds the maximum error rate and
-	 * this frame should be represented by frame muting, or white noise
-	 */
-	public boolean requiresMuting()
-	{
-		return mErrorRate > 0.0875;
-	}
+        int lplus1 = getL() + 1;
 
-	/**
-	 * Indicates that this frame contains an invalid fundamental frequency or
-	 * the error rate exceeds the threshold.  Corrective action is to use the
-	 * copy() method to copy the previous frame's model parameters to this frame
-	 * 
-	 * @return - true if a frame repeat is required
-	 */
-	public boolean repeatRequired()
-	{
-		return mFundamentalFrequency == null || 
-			   mFundamentalFrequency == FundamentalFrequency.W_INVALID ||
-			   exceedsErrorThreshold();
-	}
+        setVoicingDecisions(new boolean[lplus1]);
+        setLog2SpectralAmplitudes(new float[lplus1]);
 
-	/**
-	 * Algorithm #97 and #98 - defined maximum error rates that require a repeat
-	 */
-	private boolean exceedsErrorThreshold()
-	{
-		return mErrorCountCoset0 >= 2 &&
-			   mErrorCountTotal >= ( 10.0d + ( 40.0d * mErrorRate ) );
-	}
+        float[] spectralAmplitudes = new float[lplus1];
 
-	/**
-	 * Copies the model parameters from the previous frame's parameters and 
-	 * increments the repeat count.  Use this method when a repeat is required
-	 * due to high error rates or invalid fundamental frequency value.
-	 */
-	public void copy( IMBEModelParameters previous )
-	{
-		/* Avoid continuously repeating speech sounds - reset to defaults */
-		if( previous.getRepeatCount() > MAX_HEADROOM_THRESHOLD )
-		{
-			mFundamentalFrequency = FundamentalFrequency.W_DEFAULT;
-			int lplus1 = mFundamentalFrequency.getL() + 1;
-			
-			mEnhancedSpectralAmplitudes = new double[ lplus1 ];
-			mLog2SpectralAmplitudes = new double[ lplus1 ];
-			mSpectralAmplitudes = new double[ lplus1 ];
-			mVoicingDecisions = new boolean[ lplus1 ];
-			
-			for( int x = 0; x < lplus1; x++ )
-			{
-				mSpectralAmplitudes[ x ] = 1.0d;
-			}
-		}
-		else
-		{
-			mEnhancedSpectralAmplitudes = previous.getEnhancedSpectralAmplitudes();
-			mLog2SpectralAmplitudes = previous.getLog2SpectralAmplitudes();
-			mFundamentalFrequency = previous.getFundamentalFrequency();
-			mSpectralAmplitudes = previous.getSpectralAmplitudes();
-			mVoicingDecisions = previous.getVoicingDecisions();
-			mAmplitudeThreshold = previous.getAmplitudeThreshold();
-			mErrorCountCoset0 = previous.getErrorCountCoset0();
-			mErrorCountCoset4 = previous.getErrorCountCoset4();
-			mErrorCountTotal = previous.getErrorCountTotal();
-			mErrorRate = previous.getErrorRate();
-			mLocalEnergy = previous.getLocalEnergy();
-			
-			/* Increment the previous repeat count to indicate that this frame
-			 * is a repeat, in addition to any previously repeated frames */
-			mRepeatCount = previous.getRepeatCount() + 1;
-		}
-	}
-	
-	/**
-	 * Sets the error parameters for this frame and updates the total error rate.
-	 * 
-	 * @param previousErrorRate - running error rate from previous frame
-	 * @param errorsCoset0 - error count after error detection/correction of coset word 0
-	 * @param errorsTotal - total error count after error detection/correction
-	 */
-	public void setErrors( double previousErrorRate, int errorsCoset0, int errorsTotal )
-	{
-		mErrorCountCoset0 = errorsCoset0;
-		mErrorCountTotal = errorsTotal;
-		mErrorRate = ( 0.95d * previousErrorRate ) + ( 0.000365d * errorsTotal );
-	}
-	
-	/**
-	 * Number of harmonics (L) for this frame.
-	 */
-	public int getL()
-	{
-		return mFundamentalFrequency.getHarmonic().getL();
-	}
+        for(int x = 0; x < lplus1; x++)
+        {
+            spectralAmplitudes[x] = 1.0f;
+        }
 
-	/**
-	 * Fundamental frequency for this frame.  Also contains sub-elements
-	 * that specify the number of harmonics (L).
-	 */
-	public FundamentalFrequency getFundamentalFrequency()
-	{
-		return mFundamentalFrequency;
-	}
+        setSpectralAmplitudes(spectralAmplitudes, getLocalEnergy(), getAmplitudeThreshold());
+    }
 
-	public void setFundamentalFrequency( FundamentalFrequency fundamental )
-	{
-		mFundamentalFrequency = fundamental;
-	}
+    public IMBEModelParameters()
+    {
+        this(IMBEFundamentalFrequency.DEFAULT);
+    }
 
-	/**
-	 * Voiced / Non-Voiced decisions for each of the harmonics of this frame
-	 */
-	public boolean[] getVoicingDecisions()
-	{
-		return mVoicingDecisions;
-	}
-	
-	public void setVoicingDecisions( boolean[] decisions )
-	{
-		mVoicingDecisions = decisions;
-	}
+    /**
+     * Fundamental frequency for this frame.  Also contains sub-elements
+     * that specify the number of harmonics (L).
+     */
+    public IMBEFundamentalFrequency getIMBEFundamentalFrequency()
+    {
+        return (IMBEFundamentalFrequency)getMBEFundamentalFrequency();
+    }
 
-	/**
-	 * Reconstructed spectral amplitudes for each harmonic (L) of this frame
-	 */
-	public double[] getSpectralAmplitudes()
-	{
-		return mSpectralAmplitudes;
-	}
+    /**
+     * Indicates if the current error rate exceeds the maximum error rate and
+     * this frame should be represented by frame muting, or white noise
+     */
+    public boolean requiresMuting()
+    {
+        return getErrorRate() > 0.0875f;
+    }
 
-	public void setSpectralAmplitudes( double[] amplitudes )
-	{
-		mSpectralAmplitudes = amplitudes;
-	}
-	
-	/**
-	 * Enhanced spectral amplitudes for each harmonic (L) of this frame
-	 */
-	public double[] getEnhancedSpectralAmplitudes()
-	{
-		return mEnhancedSpectralAmplitudes;
-	}
+    /**
+     * Indicates that this frame contains an invalid fundamental frequency or
+     * the error rate exceeds the threshold.  Corrective action is to use the
+     * copy() method to copy the previous frame's model parameters to this frame
+     *
+     * @return - true if a frame repeat is required
+     */
+    public boolean repeatRequired()
+    {
+        return getIMBEFundamentalFrequency() == IMBEFundamentalFrequency.INVALID || exceedsErrorThreshold();
+    }
 
-	public void setEnhancedSpectralAmplitudes( double[] amplitudes )
-	{
-		mEnhancedSpectralAmplitudes = amplitudes;
-	}
+    /**
+     * Algorithm #97 and #98 - defined maximum error rates that require a repeat
+     */
+    private boolean exceedsErrorThreshold()
+    {
+        return mErrorCountCoset0 >= 2 && getErrorCountTotal() >= (10.0f + (40.0f * getErrorRate()));
+    }
 
-	/**
-	 * Log2 version of the reconstructed spectral amplitudes for each 
-	 * harmonic (L) of this frame
-	 */
-	public double[] getLog2SpectralAmplitudes()
-	{
-		return mLog2SpectralAmplitudes;
-	}
+    /**
+     * Copies the model parameters from the previous frame's parameters and
+     * increments the repeat count.  Use this method when a repeat is required
+     * due to high error rates or invalid fundamental frequency value.
+     */
+    public void copy(IMBEModelParameters previous)
+    {
+        /* Avoid continuously repeating speech sounds - reset to defaults */
+        if(previous.getRepeatCount() > MAX_HEADROOM_THRESHOLD)
+        {
+            setMBEFundamentalFrequency(IMBEFundamentalFrequency.DEFAULT);
+            int lplus1 = getL() + 1;
 
-	public void setLog2SpectralAmplitudes( double[] log2amplitudes )
-	{
-		mLog2SpectralAmplitudes = log2amplitudes;
-	}
-	
-	/**
-	 * Number of bit errors detected/corrected in coset word 0 of this frame
-	 */
-	public int getErrorCountCoset0()
-	{
-		return mErrorCountCoset0;
-	}
-	
-	/**
-	 * Number of bit errors detected/corrected in coset word 4 of this frame
-	 */
-	public int getErrorCountCoset4()
-	{
-		return mErrorCountCoset4;
-	}
-	
-	public void setErrorCountCoset4( int errors )
-	{
-		mErrorCountCoset4 = errors;
-	}
-	
-	/**
-	 * Total number of bit errors detected/corrected across coset words 0 - 6
-	 * of this frame
-	 */
-	public int getErrorCountTotal()
-	{
-		return mErrorCountTotal;
-	}
+            setVoicingDecisions(new boolean[lplus1]);
+            setLog2SpectralAmplitudes(new float[lplus1]);
 
-	/**
-	 * Running error rate that includes errors from this frame.
-	 */
-	public double getErrorRate()
-	{
-		return mErrorRate;
-	}
+            float[] spectralAmplitudes = new float[lplus1];
+            for(int x = 0; x < lplus1; x++)
+            {
+                spectralAmplitudes[x] = 1.0f;
+            }
 
-	/**
-	 * Local energy (SE0) parameter used in adaptive smoothing 
-	 */
-	public double getLocalEnergy()
-	{
-		return mLocalEnergy;
-	}
-	
-	public void setLocalEnergy( double energy )
-	{
-		mLocalEnergy = energy;
-	}
+            setSpectralAmplitudes(spectralAmplitudes, getLocalEnergy(), getAmplitudeThreshold());
+        }
+        else
+        {
+            setMBEFundamentalFrequency(previous.getIMBEFundamentalFrequency());
+            setVoicingDecisions(previous.getVoicingDecisions());
+            setLog2SpectralAmplitudes(previous.getLog2SpectralAmplitudes());
+            setSpectralAmplitudes(previous.getSpectralAmplitudes(), previous.getLocalEnergy(), previous.getAmplitudeThreshold());
+            setAmplitudeThreshold(previous.getAmplitudeThreshold());
+            setLocalEnergy(previous.getLocalEnergy());
+            mErrorCountCoset0 = previous.getErrorCountCoset0();
+            mErrorCountCoset4 = previous.getErrorCountCoset4();
+            setErrorCountTotal(previous.getErrorCountTotal());
+            setErrorRate(previous.getErrorRate());
 
-	/**
-	 * Amplitude threshold (TM) used in adaptive smoothing
-	 */
-	public int getAmplitudeThreshold()
-	{
-		return mAmplitudeThreshold;
-	}
-	
-	public void setAmplitudeThreshold( int threshold )
-	{
-		mAmplitudeThreshold = threshold;
-	}
+            /* Increment the previous repeat count to indicate that this frame
+             * is a repeat, in addition to any previously repeated frames */
+            setRepeatCount(previous.getRepeatCount() + 1);
+        }
+    }
 
-	/**
-	 * Running frame repeat count.  A zero value indicates this frame was not repeated.
-	 */
-	public int getRepeatCount()
-	{
-		return mRepeatCount;
-	}
+    /**
+     * Sets the error parameters for this frame and updates the total error rate.
+     *
+     * @param previousErrorRate - running error rate from previous frame
+     * @param errorsCoset0 - error count after error detection/correction of coset word 0
+     * @param errorsCoset4 - error count after error detection/correction of coset word 4
+     * @param errorsTotal - total error count after error detection/correction
+     */
+    public void setErrors(float previousErrorRate, int errorsCoset0, int errorsCoset4, int errorsTotal)
+    {
+        mErrorCountCoset0 = errorsCoset0;
+        mErrorCountCoset4 = errorsCoset4;
+        setErrorCountTotal(errorsTotal);
+        setErrorRate((0.95f * previousErrorRate) + (0.000365f * errorsTotal));
+    }
 
-	/**
-	 * Indicates if this frame was repeated from the previous frame's model
-	 * parameters.
-	 */
-	public boolean isRepeat()
-	{
-		return mRepeatCount > 0;
-	}
-	
-	public String toString()
-	{
-		StringBuilder sb = new StringBuilder();
-		
-		sb.append( "IMBE FRAME" );
-		sb.append( "\n  Fundamental: " + mFundamentalFrequency.name() );
-		sb.append( "\n  Voicing " + Arrays.toString( mVoicingDecisions ) );
-		sb.append( "\n  Log 2 Spectral " + Arrays.toString( mLog2SpectralAmplitudes ) );
-		sb.append( "\n  Spectral " + Arrays.toString( mSpectralAmplitudes ) );
-		sb.append( "\n  Enhanced Spectral " + Arrays.toString( mEnhancedSpectralAmplitudes ) );
-		sb.append( "\n  Coset 0 Errors: " + mErrorCountCoset0 );
-		sb.append( "\n  Coset 4 Errors: " + mErrorCountCoset4 );
-		sb.append( "\n  Total Errors: " + mErrorCountTotal );
-		sb.append( "\n  Error Rate: " + mErrorRate );
-		sb.append( "\n  Repeat Count: " + mRepeatCount );
-		sb.append( "\n  Local Energy: " + mLocalEnergy );
-		sb.append( "\n  Ampl Threshold: " + mAmplitudeThreshold );
-		
-		return sb.toString();
-	}
+    /**
+     * Number of bit errors detected/corrected in coset word 0 of this frame
+     */
+    public int getErrorCountCoset0()
+    {
+        return mErrorCountCoset0;
+    }
+
+    /**
+     * Number of bit errors detected/corrected in coset word 4 of this frame
+     */
+    public int getErrorCountCoset4()
+    {
+        return mErrorCountCoset4;
+    }
+
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("IMBE FRAME");
+        sb.append("\n  Fundamental: " + getIMBEFundamentalFrequency().name());
+        sb.append("\n  Voicing " + Arrays.toString(getVoicingDecisions()));
+        sb.append("\n  Log 2 Spectral " + Arrays.toString(getLog2SpectralAmplitudes()));
+        sb.append("\n  Spectral " + Arrays.toString(getSpectralAmplitudes()));
+        sb.append("\n  Enhanced Spectral " + Arrays.toString(getEnhancedSpectralAmplitudes()));
+        sb.append("\n  Coset 0 Errors: " + mErrorCountCoset0);
+        sb.append("\n  Coset 4 Errors: " + mErrorCountCoset4);
+        sb.append("\n  Total Errors: " + getErrorCountTotal());
+        sb.append("\n  Error Rate: " + getErrorRate());
+        sb.append("\n  Repeat Count: " + getRepeatCount());
+        sb.append("\n  Local Energy: " + getLocalEnergy());
+        sb.append("\n  Ampl Threshold: " + getAmplitudeThreshold());
+
+        return sb.toString();
+    }
 }
