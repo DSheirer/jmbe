@@ -65,11 +65,22 @@ public class BinaryFrame extends BitSet
     public static BinaryFrame fromBytes( byte[] data )
     {
     	BinaryFrame frame = new BinaryFrame( data.length * 8 );
-    	
-    	BitSet bits = BitSet.valueOf( data );
 
-    	frame.xor( bits );
-    	
+    	int mask;
+
+    	for(int x = 0; x < data.length; x++)
+		{
+			for(int y = 0; y < 8; y++)
+			{
+				mask = (1 << y);
+
+				if((data[x] & mask) == mask)
+				{
+					frame.set((x * 8) + (7 - y));
+				}
+			}
+		}
+
     	return frame;
     }
     

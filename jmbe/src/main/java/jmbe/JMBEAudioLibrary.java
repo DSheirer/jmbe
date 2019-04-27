@@ -27,20 +27,19 @@ public class JMBEAudioLibrary implements AudioConversionLibrary
     @Override
     public int getMajorVersion()
     {
-        //TODO: read version values from the jar file?
         return 0;
     }
 
     @Override
     public int getMinorVersion()
     {
-        return 3;
+        return 4;
     }
 
     @Override
     public int getBuildVersion()
     {
-        return 3;
+        return 0;
     }
 
     @Override
