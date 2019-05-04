@@ -75,14 +75,6 @@ public enum LMPRBlockLength
         return mBlockLengths;
     }
 
-    /**
-     * Identifies the maximum block length value from the array, which is always the value at index 3
-     */
-    public int getMaxBlockLength()
-    {
-        return mBlockLengths[3];
-    }
-
     public static LMPRBlockLength fromValue(int value)
     {
         if(0 <= value && value <= 56)

@@ -1,6 +1,9 @@
 package jmbe.converters.ambe;
 
 
+/**
+ * Higher order coefficients - b5
+ */
 public enum HOCB5
 {
     V0(new double[] {0.264108, 0.045976, -0.200999, -0.122344}),

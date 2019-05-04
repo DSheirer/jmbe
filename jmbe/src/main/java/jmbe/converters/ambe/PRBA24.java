@@ -1,6 +1,8 @@
 package jmbe.converters.ambe;
 
-
+/**
+ * Predictive Residual Block Average (PRBA) enumeration with values for indices 2 - 4
+ */
 public enum PRBA24
 {
     V0(0.526055, -0.328567, -0.304727),
