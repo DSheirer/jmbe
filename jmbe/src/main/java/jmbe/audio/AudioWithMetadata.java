@@ -21,7 +21,6 @@ package jmbe.audio;
 
 import jmbe.iface.IAudioWithMetadata;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,13 +30,13 @@ import java.util.Map;
 public class AudioWithMetadata implements IAudioWithMetadata
 {
     private float[] mAudio;
-    private Map<String,String> mMetadataMap = new HashMap();
+    private Map<String,String> mMetadataMap = new HashMap<>();
 
     /**
      * Constructs an instance
      * @param audio samples
      */
-    public AudioWithMetadata(float[] audio)
+    private AudioWithMetadata(float[] audio)
     {
         mAudio = audio;
     }

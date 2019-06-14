@@ -2,6 +2,9 @@ package jmbe.edac;
 
 import jmbe.binary.BinaryFrame;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /*******************************************************************************
  *     jmbe - Java MBE Library
  *     Copyright (C) 2015 Dennis Sheirer
@@ -95,9 +98,8 @@ public class Golay23
 
 						int corrected = copy.getInt( 0, 22 );
 						int original = frame.getInt( startIndex, startIndex + 22 );
-						
 						int errorCount = Integer.bitCount( original ^ corrected );
-						
+
 						if( errorCount <= 3 )
 						{
 							frame.load( startIndex, 23, corrected );

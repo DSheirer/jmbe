@@ -6,7 +6,7 @@ sourceCompatibility = 1.8
 
 subprojects {
     apply plugin: 'java'
-    version = '0.3.3'
+    version = '1.0.0'
 }
 
 project(':api') {
