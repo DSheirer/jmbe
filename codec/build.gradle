@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'org.slf4j:slf4j-simple:1.7.25'
+    compile 'com.github.wendykierp:JTransforms:3.1'
+    compile 'pl.edu.icm:JLargeArrays:1.6'
+    compile project(':api')
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+jar {
+    manifest {
+        attributes('Implementation-Title': rootProject.name,
+                'Version': project.version,
+                'Site': 'https://github.com/DSheirer/jmbe')
+    }
+    from rootProject.file('LICENSE')
+}
+
+//task copyLibrary(type: Copy){
+//    from jar
+//    into "$rootProject.buildDir/libs"
+//    println("Your finished JMBE library is here: $rootProject.buildDir/libs")
+//}
+//
+//build.finalizedBy(copyLibrary)

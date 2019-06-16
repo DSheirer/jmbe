@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id=":creator:main" external.linked.project.path="$MODULE_DIR$/../../../creator" external.root.project.path="$MODULE_DIR$/../../.." external.system.id="GRADLE" external.system.module.group="jmbe" external.system.module.type="sourceSet" external.system.module.version="1.0.0" type="JAVA_MODULE" version="4">
+  <component name="ExternalSystem" linkedProjectPath="$MODULE_DIR$/../../.." rootProjectPath="$MODULE_DIR$/../../.." />
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
+    <output url="file://$MODULE_DIR$/../../../creator/out/production/classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../../creator/src/main">
+      <sourceFolder url="file://$MODULE_DIR$/../../../creator/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../creator/src/main/resources" type="java-resource" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Gradle: ch.qos.logback:logback-classic:1.2.3" level="project" />
+    <orderEntry type="library" name="Gradle: ch.qos.logback:logback-core:1.2.3" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.jgit:org.eclipse.jgit:5.3.2.201906051522-r" level="project" />
+    <orderEntry type="library" name="Gradle: org.slf4j:slf4j-api:1.7.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.jcraft:jsch:0.1.54" level="project" />
+    <orderEntry type="library" name="Gradle: com.jcraft:jzlib:1.1.1" level="project" />
+    <orderEntry type="library" name="Gradle: com.googlecode.javaewah:JavaEWAH:1.1.6" level="project" />
+    <orderEntry type="library" name="Gradle: org.bouncycastle:bcpg-jdk15on:1.60" level="project" />
+    <orderEntry type="library" name="Gradle: org.bouncycastle:bcpkix-jdk15on:1.60" level="project" />
+    <orderEntry type="library" name="Gradle: org.bouncycastle:bcprov-jdk15on:1.60" level="project" />
+  </component>
+</module>

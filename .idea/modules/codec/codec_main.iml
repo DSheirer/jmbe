@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id=":codec:main" external.linked.project.path="$MODULE_DIR$/../../../codec" external.root.project.path="$MODULE_DIR$/../../.." external.system.id="GRADLE" external.system.module.group="jmbe" external.system.module.type="sourceSet" external.system.module.version="1.0.0" type="JAVA_MODULE" version="4">
+  <component name="ExternalSystem" linkedProjectPath="$MODULE_DIR$/../../.." rootProjectPath="$MODULE_DIR$/../../.." />
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
+    <output url="file://$MODULE_DIR$/../../../codec/out/production/classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../../codec/src/main">
+      <sourceFolder url="file://$MODULE_DIR$/../../../codec/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../codec/src/main/resources" type="java-resource" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Gradle: org.slf4j:slf4j-simple:1.7.25" level="project" />
+    <orderEntry type="library" name="Gradle: org.slf4j:slf4j-api:1.7.25" level="project" />
+    <orderEntry type="library" name="Gradle: com.github.wendykierp:JTransforms:3.1" level="project" />
+    <orderEntry type="library" name="Gradle: pl.edu.icm:JLargeArrays:1.6" level="project" />
+    <orderEntry type="module" module-name="api_main" />
+    <orderEntry type="library" name="Gradle: org.apache.commons:commons-math3:3.5" level="project" />
+  </component>
+</module>
