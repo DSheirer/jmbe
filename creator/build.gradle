@@ -44,7 +44,7 @@ runtime {
     targetPlatform('windows-x64', jdkWindows_x64)
 
     options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
-    modules = ['java.desktop', 'java.naming', 'jdk.unsupported', 'jdk.unsupported.desktop']
+    modules = ['java.base', 'java.compiler', 'java.desktop', 'java.logging', 'java.management', 'java.naming']
     imageZip = file("$buildDir/image/creator-" + version + ".zip")
 }
 

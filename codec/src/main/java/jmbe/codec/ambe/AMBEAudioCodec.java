@@ -35,10 +35,7 @@ public class AMBEAudioCodec implements IAudioCodec
     private final static Logger mLog = LoggerFactory.getLogger(AMBEAudioCodec.class);
 
     public static final String CODEC_NAME = "AMBE 3600 x 2450";
-    private static final AMBEModelParameters DEFAULT_VOICE_PARAMETERS = new AMBEModelParameters();
-
     private AMBESynthesizer mSynthesizer = new AMBESynthesizer();
-    private AMBEModelParameters mPreviousAMBEModelParameters = DEFAULT_VOICE_PARAMETERS;
 
     public AMBEAudioCodec()
     {
@@ -51,20 +48,15 @@ public class AMBEAudioCodec implements IAudioCodec
      */
     public float[] getAudio(byte[] frameData)
     {
-        AMBEFrame frame = new AMBEFrame(frameData);
+        return getAudio(new AMBEFrame(frameData));
+    }
 
-        if(frame.getFrameType() == FrameType.TONE)
-        {
-            //Reset to use a default previous frame for subsequent voice decoding
-            reset();
-            return mSynthesizer.getTone(frame.getToneParameters());
-        }
-        else
-        {
-            AMBEModelParameters AMBEModelParameters = frame.getVoiceParameters(mPreviousAMBEModelParameters);
-            mPreviousAMBEModelParameters = AMBEModelParameters;
-            return mSynthesizer.getVoice(AMBEModelParameters);
-        }
+    /**
+     * Converts the AMBE frame into PCM audio samples at 8kHz 16-bit rate
+     */
+    public float[] getAudio(AMBEFrame ambeFrame)
+    {
+        return mSynthesizer.getAudio(ambeFrame);
     }
 
     /**
@@ -76,39 +68,32 @@ public class AMBEAudioCodec implements IAudioCodec
     public IAudioWithMetadata getAudioWithMetadata(byte[] frameData)
     {
         AMBEFrame frame = new AMBEFrame(frameData);
+        AudioWithMetadata audioWithMetadata = AudioWithMetadata.create(getAudio(frameData));
 
         if(frame.getFrameType() == FrameType.TONE)
         {
-            //Reset to use a default previous frame for subsequent voice decoding
-            reset();
-            AudioWithMetadata audio = AudioWithMetadata.create(mSynthesizer.getTone(frame.getToneParameters()));
             Tone tone = frame.getToneParameters().getTone();
 
             if(Tone.CALL_PROGRESS_TONES.contains(tone))
             {
-                audio.addMetadata("CALL PROGRESS", tone.toString());
+                audioWithMetadata.addMetadata("CALL PROGRESS", tone.toString());
             }
             else if(Tone.DISCRETE_TONES.contains(tone))
             {
-                audio.addMetadata("TONE", tone.toString());
+                audioWithMetadata.addMetadata("TONE", tone.toString());
             }
             else if(Tone.DTMF_TONES.contains(tone))
             {
-                audio.addMetadata("DTMF", tone.toString());
+                audioWithMetadata.addMetadata("DTMF", tone.toString());
             }
             else if(Tone.KNOX_TONES.contains(tone))
             {
-                audio.addMetadata("KNOX", tone.toString());
+                audioWithMetadata.addMetadata("KNOX", tone.toString());
             }
 
-            return audio;
         }
-        else
-        {
-            AMBEModelParameters AMBEModelParameters = frame.getVoiceParameters(mPreviousAMBEModelParameters);
-            mPreviousAMBEModelParameters = AMBEModelParameters;
-            return AudioWithoutMetadata.create(mSynthesizer.getVoice(AMBEModelParameters));
-        }
+
+        return audioWithMetadata;
     }
 
     /**
@@ -117,7 +102,7 @@ public class AMBEAudioCodec implements IAudioCodec
     @Override
     public void reset()
     {
-        mPreviousAMBEModelParameters = DEFAULT_VOICE_PARAMETERS;
+        mSynthesizer.reset();
     }
 
     /**

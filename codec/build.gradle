@@ -15,6 +15,8 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
+archivesBaseName = 'jmbe'
+
 jar {
     manifest {
         attributes('Implementation-Title': rootProject.name,
@@ -22,12 +24,6 @@ jar {
                 'Site': 'https://github.com/DSheirer/jmbe')
     }
     from rootProject.file('LICENSE')
-}
 
-//task copyLibrary(type: Copy){
-//    from jar
-//    into "$rootProject.buildDir/libs"
-//    println("Your finished JMBE library is here: $rootProject.buildDir/libs")
-//}
-//
-//build.finalizedBy(copyLibrary)
+    println("Your finished JMBE library is located here: " + archiveFile.get().toString())
+}

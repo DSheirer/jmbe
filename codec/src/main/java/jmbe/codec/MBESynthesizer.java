@@ -256,7 +256,10 @@ public abstract class MBESynthesizer
 
                 for(int n = a_min[l]; n < b_max[l]; n++)
                 {
-                    dftBinScalor[n] = scalor;
+                    if(n < 128)
+                    {
+                        dftBinScalor[n] = scalor;
+                    }
                 }
             }
         }
