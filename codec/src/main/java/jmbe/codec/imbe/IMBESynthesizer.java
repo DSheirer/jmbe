@@ -95,12 +95,10 @@ public class IMBESynthesizer extends MBESynthesizer
     public static void main(String[] args)
     {
         String[] frames = {
-            "79C9E30865C62B56F323A0B733C671ADA3A5",
-            "50A6B91BAD60218C59660DCBDE8C44181353",
-            "320CD83B27469900FA01FF1E93E31CFAA03F",
-            "32AD0E336874D16F882B963BF3006AAAA2FF",
-            "1CE0CA3F0523D5C34218F83B2E715E8BF99A"
+            "7C57B79E016C72542611A1E329DDE3A3DCFE",
+            "103395EC150222288DE7B35977025308C4E8"
         };
+
         IMBESynthesizer synthesizer = new IMBESynthesizer();
         AudioFormat audioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
             8000.0f, 16, 1, 2, 8000.0f, false);
@@ -117,6 +115,11 @@ public class IMBESynthesizer extends MBESynthesizer
 
                 boolean started = false;
 
+                IMBEModelParameters current = new IMBEModelParameters();
+
+                float[] allSamples = new float[frames.length * 160];
+                int allSamplesPointer = 0;
+
                 for(String frame : frames)
                 {
                     byte[] data = new byte[frame.length() / 2];
@@ -126,14 +129,10 @@ public class IMBESynthesizer extends MBESynthesizer
                     }
 
                     IMBEFrame imbe = new IMBEFrame(data);
-                    System.out.println(imbe.toString());
-
-                    if(imbe.getFundamentalFrequency() == IMBEFundamentalFrequency.INVALID)
-                    {
-                        System.out.println("INVALID - FRAME:" + frame);
-                    }
-
+                    current = imbe.getModelParameters(current);
                     float[] samples = synthesizer.getAudio(imbe);
+                    System.arraycopy(samples, 0, allSamples, allSamplesPointer, samples.length);
+                    allSamplesPointer += 160;
                     ByteBuffer converted = ByteBuffer.allocate(samples.length * 2);
                     converted = converted.order(ByteOrder.LITTLE_ENDIAN);
 

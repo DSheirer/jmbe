@@ -184,7 +184,8 @@ public class IMBEModelParameters extends MBEModelParameters
         StringBuilder sb = new StringBuilder();
 
         sb.append("IMBE FRAME");
-        sb.append("\n  Fundamental: " + getIMBEFundamentalFrequency().name());
+        sb.append("\n  Fundamental: " + getIMBEFundamentalFrequency().name() + " " + getIMBEFundamentalFrequency().getFrequency() + " " + (8000 * getIMBEFundamentalFrequency().getFrequency() + "Hz"));
+        sb.append("\n  L Harmonic Count: " + getIMBEFundamentalFrequency().getL() + " Bandwidth: " + (getIMBEFundamentalFrequency().getFrequency() * 8000.0 * getIMBEFundamentalFrequency().getL()));
         sb.append("\n  Voicing " + Arrays.toString(getVoicingDecisions()));
         sb.append("\n  Log 2 Spectral " + Arrays.toString(getLog2SpectralAmplitudes()));
         sb.append("\n  Spectral " + Arrays.toString(getSpectralAmplitudes()));

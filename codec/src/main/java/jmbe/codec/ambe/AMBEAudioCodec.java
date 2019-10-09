@@ -42,6 +42,16 @@ public class AMBEAudioCodec implements IAudioCodec
     }
 
     /**
+     * Sets audio gain for synthesized audio.
+     * @param gain in range 0.0 < gain < 16.0 (default = 1.0)
+     */
+    @Override
+    public void setAudioGain(float gain)
+    {
+        mSynthesizer.setAudioGain(gain);
+    }
+
+    /**
      * Converts the AMBE frame data into PCM audio samples at 8kHz 16-bit rate.
      *
      * @param frameData byte array of AMBE frame data

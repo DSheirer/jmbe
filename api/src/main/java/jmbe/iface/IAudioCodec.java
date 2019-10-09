@@ -31,6 +31,12 @@ public interface IAudioCodec
     String getCodecName();
 
     /**
+     * Set the gain applied to the decoded audio samples
+     * @param gain in range 0.0 < gain < 16.0
+     */
+    void setAudioGain(float gain);
+
+    /**
      * Converts frameData into the audio format specified by the getConvertedAudioFormat() method
      */
     float[] getAudio(byte[] frameData);

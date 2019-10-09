@@ -151,7 +151,7 @@ public enum AMBEFundamentalFrequency implements IFundamentalFrequency
     W121(0, 9, FrameType.ERASURE),
     W122(0, 9, FrameType.ERASURE),
     W123(0, 9, FrameType.ERASURE),
-    W124(Math.PI / 32.0, 14, FrameType.SILENCE),
+    W124(Math.PI / 32.0, 15, FrameType.SILENCE),
     W125(Math.PI / 32.0, 14, FrameType.SILENCE),
     W126(0, 9, FrameType.TONE),
     W127(0, 9, FrameType.TONE);

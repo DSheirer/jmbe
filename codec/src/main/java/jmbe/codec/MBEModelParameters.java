@@ -19,6 +19,8 @@
 
 package jmbe.codec;
 
+import java.util.Arrays;
+
 /**
  * Base Multi-Band Excitation (MBE) voice frame model parameters required to synthesize an audio frame.
  */
@@ -267,12 +269,29 @@ public abstract class MBEModelParameters
     }
 
     /**
+     * Count of the unvoiced bands in this frame
+     */
+    public int getUnvoicedBandCount()
+    {
+        int unvoiced = 0;
+
+        for(boolean voiced: getVoicingDecisions())
+        {
+            if(!voiced)
+            {
+                unvoiced++;
+            }
+        }
+
+        return unvoiced;
+    }
+
+    /**
      * Indicates if adaptive smoothing is required when the error rate threshold is exceeded
      */
     public boolean requiresAdaptiveSmoothing()
     {
-        return true;
-//        return getErrorRate() > 0.0125f || getErrorCountTotal() > 4;
+        return getErrorRate() > 0.0125f || getErrorCountTotal() > 4;
     }
 
     /**
@@ -301,16 +320,25 @@ public abstract class MBEModelParameters
         float rm0squared = RM[0] * RM[0];
         float rm1squared = RM[1] * RM[1];
 
-        /* Algorithm #107 - calculate enhancement weights (W) */
-        for(int l = 1; l <= getL(); l++)
+        float[] enhancedSpectralAmplitudes = new float[L + 1];
+
+        if(RM[0] == 0.0f)
         {
-            float temp = (0.96f * (float)Math.PI * (rm0squared + rm1squared -
-                (2.0f * RM[0] * RM[1] * (float)Math.cos(getFundamentalFrequency() * (float)l)))) /
-                (getFundamentalFrequency() * RM[0] * (rm0squared - rm1squared));
-            W[l] = (float)(Math.sqrt(spectralAmplitudes[l]) * Math.pow(temp, 0.25));
+            setEnhancedSpectralAmplitudes(enhancedSpectralAmplitudes);
+            return;
         }
 
-        float[] enhancedSpectralAmplitudes = new float[L + 1];
+        /* Algorithm #107 - calculate enhancement weights (W) */
+        if(RM[0] != 0.0f)
+        {
+            for(int l = 1; l <= getL(); l++)
+            {
+                float temp = (0.96f * (float)Math.PI * (rm0squared + rm1squared -
+                    (2.0f * RM[0] * RM[1] * (float)Math.cos(getFundamentalFrequency() * (float)l)))) /
+                    (getFundamentalFrequency() * RM[0] * (rm0squared - rm1squared));
+                W[l] = (float)(Math.sqrt(spectralAmplitudes[l]) * Math.pow(temp, 0.25));
+            }
+        }
 
         /* Algorithm #108 - apply weights to produce enhanced amplitudes */
         for(int l = 1; l <= L; l++)
@@ -319,11 +347,11 @@ public abstract class MBEModelParameters
             {
                 enhancedSpectralAmplitudes[l] = spectralAmplitudes[l];
             }
-            else if(W[l] > 1.2d)
+            else if(W[l] > 1.2f)
             {
                 enhancedSpectralAmplitudes[l] = spectralAmplitudes[l] * 1.2f;
             }
-            else if(W[l] < 0.5d)
+            else if(W[l] < 0.5f)
             {
                 enhancedSpectralAmplitudes[l] = spectralAmplitudes[l] * 0.5f;
             }

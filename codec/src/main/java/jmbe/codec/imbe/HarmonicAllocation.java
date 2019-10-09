@@ -79,13 +79,13 @@ public enum HarmonicAllocation
 
     private int mL;
     private int[][] mAllocations;
-    private static Map<Integer,HarmonicAllocation> sLOOKUP_MAP = new TreeMap<>();
+    private static final Map<Integer,HarmonicAllocation> LOOKUP_MAP = new TreeMap<>();
 
     static
     {
         for(HarmonicAllocation harmonicAllocation : HarmonicAllocation.values())
         {
-            sLOOKUP_MAP.put(harmonicAllocation.mL, harmonicAllocation);
+            LOOKUP_MAP.put(harmonicAllocation.mL, harmonicAllocation);
         }
     }
 
@@ -105,7 +105,7 @@ public enum HarmonicAllocation
      */
     public static HarmonicAllocation fromL(int L)
     {
-        return sLOOKUP_MAP.get(L);
+        return LOOKUP_MAP.get(L);
     }
 }
 

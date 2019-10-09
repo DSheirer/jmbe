@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Defines the deltaM step sizes for each of the b3 through b(L + 1) predicition residuals stored in indexes 0
+ * Defines the deltaM step sizes for each of the b3 through b(L + 1) prediction residuals stored in indexes 0
  * through (L + 1 - 3).
  *
  * Used by Alg 68 and 71

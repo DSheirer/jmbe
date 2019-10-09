@@ -25,5 +25,5 @@ jar {
     }
     from rootProject.file('LICENSE')
 
-    println("Your finished JMBE library is located here: " + archiveFile.get().toString())
+    println("Your finished JMBE library will be located here: " + archiveFile.get().toString())
 }

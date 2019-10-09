@@ -97,7 +97,7 @@ public class AMBEModelParameters extends MBEModelParameters
 
         setVoicingDecisions(new boolean[getL() + 1]);
         float[] log2SpectralAmplitudes = new float[getL() + 1];
-        for(int l = 1; l <= getL(); l++)
+        for(int l = 0; l <= getL(); l++)
         {
             log2SpectralAmplitudes[l] = 1.0f;
         }
@@ -166,6 +166,8 @@ public class AMBEModelParameters extends MBEModelParameters
     private void setGain(int b2, AMBEModelParameters previousFrame)
     {
         DifferentialGain differentialGain = DifferentialGain.fromValue(b2);
+
+        System.out.println("Gain: " + differentialGain);
 
         //Alg 26.
         mGain = differentialGain.getGain() + (0.5f * previousFrame.getGain());
@@ -314,25 +316,31 @@ public class AMBEModelParameters extends MBEModelParameters
         int[] kFloor = new int[getL() + 1];
         float[] s = new float[getL() + 1];
 
-        float summation43 = 0.0f;
-
         float[] previousA = previousParameters.getLog2SpectralAmplitudes();
+
+        //Alg 44
+        previousA[0] = previousA[1];
 
         for(int l = 1; l <= getL(); l++)
         {
             k[l] = kappa * (float)l;
             kFloor[l] = (int)Math.floor(k[l]);
             s[l] = k[l] - kFloor[l];
-            float aklPrevious = (kFloor[l] == 0 ? previousA[1] : (kFloor[l] <= previousL ? previousA[kFloor[l]] : previousA[previousL]));
-            summation43 += (((1.0 - s[l]) * aklPrevious) + (s[l] * aklPrevious));
         }
 
-        //Alg 42 - precompute summarization
+        //Alg 42 & 43 - pre-compute sum
+        float summation43 = 0.0f;
         float lambdaSum = 0.0f;
 
-        for(int lambda = 1; lambda <= getL(); lambda++)
+        for(int l = 1; l <= getL(); l++)
         {
-            lambdaSum += T[lambda];
+            float aklPrevious = kFloor[l] <= previousL ? previousA[kFloor[l]] : previousA[previousL];
+
+            int plus1 = l < getL() ? l + 1 : getL();
+            float aklPlus1Previous = kFloor[plus1] <= previousL ? previousA[kFloor[plus1]] : previousA[previousL];
+
+            summation43 += (((1.0 - s[l]) * aklPrevious) + (s[l] * aklPlus1Previous));
+            lambdaSum += T[l];
         }
 
         lambdaSum /= (float)getL();
@@ -341,7 +349,8 @@ public class AMBEModelParameters extends MBEModelParameters
         float gain = mGain - (0.5f * (float)(Math.log(getL()) / Math.log(2.0))) - lambdaSum;
 
         //Log Spectral Magnitudes
-        float[] log2SpectralAmplitudes = new float[getL() + 1];
+        float[] logSpectralMagnitudes = new float[getL() + 1];
+        logSpectralMagnitudes[0] = 1.0f;
 
         //Spectral Amplitudes
         float[] spectralAmplitudes = new float[getL() + 1];
@@ -356,7 +365,7 @@ public class AMBEModelParameters extends MBEModelParameters
             float aklPlus1Previous = ((kFloor[lPlus1]) <= previousL ? previousA[kFloor[lPlus1]] : previousA[previousL]);
 
             //Alg 43
-            log2SpectralAmplitudes[l] = T[l] + (0.65f * (1.0f - s[l]) * aklPrevious)
+            logSpectralMagnitudes[l] = T[l] + (0.65f * (1.0f - s[l]) * aklPrevious)
                 + (0.65f * s[l] * aklPlus1Previous)
                 - (0.65f / (float)getL()) * summation43
                 + gain;
@@ -364,16 +373,16 @@ public class AMBEModelParameters extends MBEModelParameters
             //Alg 46 - spectral magnitude is based on the (l) band's voicing decision
             if(voicingDecisions[l])
             {
-                spectralAmplitudes[l] = (float)Math.exp(0.693f * log2SpectralAmplitudes[l]);
+                spectralAmplitudes[l] = (float)Math.exp(0.693f * logSpectralMagnitudes[l]);
             }
             else
             {
                 spectralAmplitudes[l] = (0.2046f / (float)Math.sqrt(getFundamentalFrequency())) *
-                    (float)Math.exp(0.693f * log2SpectralAmplitudes[l]);
+                    (float)Math.exp(0.693f * logSpectralMagnitudes[l]);
             }
         }
 
-        setLog2SpectralAmplitudes(log2SpectralAmplitudes);
+        setLog2SpectralAmplitudes(logSpectralMagnitudes);
         setSpectralAmplitudes(spectralAmplitudes, previousParameters.getLocalEnergy(),
             previousParameters.getAmplitudeThreshold());
     }

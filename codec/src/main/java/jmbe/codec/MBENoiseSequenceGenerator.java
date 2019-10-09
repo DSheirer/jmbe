@@ -20,41 +20,25 @@
 package jmbe.codec;
 
 import java.util.Arrays;
-import java.util.Random;
 
-/**
- * White Noise Generator
- *
- * NOTE: replaces Algorithm 117 with a more natural sounding gaussian noise generator.
- */
-public class WhiteNoiseGenerator
+public class MBENoiseSequenceGenerator
 {
-    private static final float GAIN = 26562.5f; //53,125 or 81% of saturation
-
-    private Random mRandom = new Random();
+    private float mSample = 3147;
     private float[] mCurrentBuffer = new float[256];
 
-    public WhiteNoiseGenerator()
+    public MBENoiseSequenceGenerator()
     {
-        nextSample();
+    }
 
-        for(int x = 0; x < mCurrentBuffer.length; x++)
-        {
-            mCurrentBuffer[x] = nextSample();
-        }
+    public float next()
+    {
+        float next = mSample;
+        mSample = ((171.0f * next) + 11213.0f) % 53125;
+        return next;
     }
 
     /**
-     * Generates the next (random) white noise sample in the range -1.0<>1.0
-     */
-    public float nextSample()
-    {
-        return (mRandom.nextFloat() * 2.0f - 1.0f);
-    }
-
-    /**
-     * Generates an array of 256 white noise samples in range of -26,562.5 <> 26,562.5 where each successive buffer
-     * overlaps the preceding buffer by 96 samples.
+     * Generates an array of 256 white noise samples.
      */
     public float[] nextBuffer()
     {
@@ -65,21 +49,9 @@ public class WhiteNoiseGenerator
 
         for(int x = 96; x < 256; x++)
         {
-            mCurrentBuffer[x] = nextSample() * GAIN;
+            mCurrentBuffer[x] = next();
         }
 
         return copy;
-    }
-
-    public float[] getSamples(int length, float gain)
-    {
-        float[] samples = new float[length];
-
-        for(int x = 0; x < samples.length; x++)
-        {
-            samples[x] = (nextSample() * gain);
-        }
-
-        return samples;
     }
 }

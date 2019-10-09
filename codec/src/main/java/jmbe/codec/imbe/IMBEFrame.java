@@ -24,6 +24,7 @@ import jmbe.edac.Golay23;
 import jmbe.edac.Hamming15;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.util.resources.CalendarData;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -183,6 +184,7 @@ public class IMBEFrame
         StepSizes stepSizes = StepSizes.fromL(L);
         QuantizedValueIndexes indexes = QuantizedValueIndexes.fromL(L);
 
+        System.out.println("L:" + L + " Gain:" + gain + " Step:" + stepSizes + " Indexes:" + indexes);
         //Alg 68 - Decoding gain vector G
         for(int m = 3; m <= 7; m++)
         {
@@ -193,9 +195,10 @@ public class IMBEFrame
             if(indexSet.length > 0)
             {
                 int bm = mFrame.getInt(indexSet);
-                G[m - 1] = stepSizes.getStepSizes()[m - 3] * ((float)bm - ((float)Math.pow(2, indexSet.length - 1) + 0.5f));
+                G[m - 1] = stepSizes.getStepSizes()[m - 3] * ((float)bm - (float)Math.pow(2, indexSet.length - 1) + 0.5f);
             }
         }
+
 
         int[][] harmonicAllocations = HarmonicAllocation.fromL(L).getAllocations();
         //Harmonic allocation for i = 6 (index 5) will always have the largest allocation - use it to dimension C array
@@ -249,7 +252,7 @@ public class IMBEFrame
             {
                 for(int k = 1; k <= Ji; k++)
                 {
-                    T[l] += (k == 1 ? 1.0f : 2.0f) * C[i][k] * Math.cos((Math.PI * (float)(k - 1) * ((float)j - 0.5f)) / (float)Ji);
+                    T[l] += (k == 1 ? 1.0f : 2.0f) * C[i][k] * (float)Math.cos((Math.PI * (float)(k - 1) * ((float)j - 0.5f)) / (float)Ji);
                 }
 
                 l++;
@@ -281,8 +284,7 @@ public class IMBEFrame
         {
             float[] resized = new float[nextL + 1];
 
-            /* Copy all but index 0 */
-            System.arraycopy(elements, 1, resized, 1, elements.length - 1);
+            System.arraycopy(elements, 0, resized, 0, elements.length);
 
             /* Copy the highest index value to the newly added indexes */
             float highest = elements[elements.length - 1];
@@ -293,16 +295,10 @@ public class IMBEFrame
                 resized[x] = highest;
             }
 
-            /* Algorithm #78 - set previous index 0 to 1.0 */
-            resized[0] = 1.0f;
-
             return resized;
         }
         else
         {
-            /* Set index 0 to 1.0 */
-            elements[0] = 1.0f;
-
             return elements;
         }
     }
@@ -324,8 +320,7 @@ public class IMBEFrame
         int previousL = previousParameters.getL();
 
         //Get previous frame's log2M entries and resize them to 1 greater than the max of the current L, or the
-        //previous L.  Set index 0 to 1.0 and any newly expanded indexes to the value of the previously highest
-        //numbered index
+        //previous L.  Set any newly expanded indexes to the value of the previously highest numbered index
         float[] previousLog2M = resize(previousParameters.getLog2SpectralAmplitudes(),
             Math.max(getFundamentalFrequency().getL(), previousL) + 1);
 
@@ -337,7 +332,6 @@ public class IMBEFrame
         float[] kl = new float[Lplus1];
         int[] klFloor = new int[Lplus1];
         float[] sl = new float[Lplus1];
-        float sum = 0.0f;
 
         for(int l = 1; l < Lplus1; l++)
         {
@@ -348,7 +342,12 @@ public class IMBEFrame
 
             /* Algorithm #76 - calculate sl */
             sl[l] = kl[l] - (float)klFloor[l];
+        }
 
+        float sum = 0.0f;
+
+        for(int l = 1; l < Lplus1; l++)
+        {
             /* Algorithm #77 partial - summation */
             sum += ((1.0f - sl[l]) * previousLog2M[klFloor[l]]) + (sl[l] * previousLog2M[klFloor[l] + 1]);
         }
@@ -372,12 +371,14 @@ public class IMBEFrame
             p = 0.7f;
         }
 
-        for(int l = 1; l < Lplus1; l++)
+        float plSum = (p / L) * sum;
+
+        for(int l = 1; l <= L; l++)
         {
             log2M[l] = T[l]
                 + (p * (1.0f - sl[l]) * previousLog2M[klFloor[l]])
                 + (p * sl[l] * previousLog2M[klFloor[l] + 1])
-                - ((p / L) * sum);
+                - plSum;
         }
 
         return log2M;
@@ -390,7 +391,7 @@ public class IMBEFrame
     {
         float[] spectralAmplitudes = new float[log2SpectralAmplitudes.length];
 
-        for(int l = 1; l < log2SpectralAmplitudes.length; l++)
+        for(int l = 0; l < log2SpectralAmplitudes.length; l++)
         {
             spectralAmplitudes[l] = (float)Math.pow(2.0f, log2SpectralAmplitudes[l]);
         }
