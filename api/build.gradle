@@ -22,7 +22,7 @@ plugins {
 }
 
 jar {
-    baseName = rootProject.name + "-api"
+    archiveBaseName = rootProject.name + "-api"
     manifest {
         attributes('Implementation-Title': rootProject.name + ' API',
                 'Implementation-Version': project.version,

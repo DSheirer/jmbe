@@ -11,10 +11,10 @@ repositories {
 }
 
 dependencies {
-    compile 'ch.qos.logback:logback-core:1.2.3'
-    compile 'ch.qos.logback:logback-classic:1.2.3'
-    compile 'org.slf4j:slf4j-api:1.7.25'
-    compile group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.3.2.201906051522-r'
+    implementation 'ch.qos.logback:logback-core:1.2.3'
+    implementation 'ch.qos.logback:logback-classic:1.2.3'
+    implementation 'org.slf4j:slf4j-api:1.7.25'
+    implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.3.2.201906051522-r'
 }
 
 application {
@@ -24,7 +24,7 @@ application {
 jar {
     manifest {
         attributes 'Implementation-Title': "${project.archivesBaseName}",
-                'Implementation-Version': version
+                'Implementation-Version': archiveVersion
     }
     from rootProject.file('LICENSE')
 }

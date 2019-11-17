@@ -1,3 +1,5 @@
+1.0.0 20191117 AMBE CODEC support
+
 0.3.4 20180415 Converted build script from Ant to Gradle
 
 0.3.3 20160819 Reintroduced original 8 kHz PCM audio format.
