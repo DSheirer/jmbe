@@ -24,7 +24,6 @@ import jmbe.edac.Golay23;
 import jmbe.edac.Hamming15;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.util.resources.CalendarData;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -38,7 +37,6 @@ public class IMBEFrame
 
     public static final int[] RANDOMIZER_SEED = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
     public static final int[] VECTOR_B0 = {0, 1, 2, 3, 4, 5, 141, 142};
-    public static final int[] VECTOR_B2 = {6, 7, 8, 98, 99, 140};
 
     /**
      * Message frame bit index of the voiced/unvoiced decision for all values
@@ -50,6 +48,12 @@ public class IMBEFrame
     public static final int[] VOICE_DECISION_INDEX = new int[]{0, 92, 92, 92, 93, 93, 93, 94, 94, 94, 95, 95, 95, 96,
         96, 96, 97, 97, 97, 98, 98, 98, 99, 99, 99, 100, 100, 100, 101, 101, 101, 102, 102, 102, 107, 107, 107, 107,
         107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107, 107};
+
+    /**
+     * Coefficient offsets for bit lengths 0 - 10:   (2 ^ (bit length -1)) - 0.5
+     */
+    public static final float[] COEFFICIENT_OFFSET = new float[] {0.0f, 0.5f, 1.5f, 3.5f, 7.5f, 15.5f, 31.5f, 63.5f,
+        127.5f, 255.5f, 511.5f};
 
     private BinaryFrame mFrame;
     private IMBEFundamentalFrequency mFundamentalFrequency;
@@ -177,14 +181,16 @@ public class IMBEFrame
     {
         int L = getFundamentalFrequency().getL();
 
+        GainIndexes gainIndexes = GainIndexes.fromL(getFundamentalFrequency().getL());
+        int gainIndex = mFrame.getInt(gainIndexes.getIndexes());
+        Gain gain = Gain.fromValue(gainIndex);
+
         float[] G = new float[7];
-        Gain gain = Gain.fromValue(mFrame.getInt(VECTOR_B2));
         G[1] = gain.getGain();
 
         StepSizes stepSizes = StepSizes.fromL(L);
         QuantizedValueIndexes indexes = QuantizedValueIndexes.fromL(L);
 
-        System.out.println("L:" + L + " Gain:" + gain + " Step:" + stepSizes + " Indexes:" + indexes);
         //Alg 68 - Decoding gain vector G
         for(int m = 3; m <= 7; m++)
         {
@@ -194,11 +200,10 @@ public class IMBEFrame
 
             if(indexSet.length > 0)
             {
-                int bm = mFrame.getInt(indexSet);
-                G[m - 1] = stepSizes.getStepSizes()[m - 3] * ((float)bm - (float)Math.pow(2, indexSet.length - 1) + 0.5f);
+                int b = mFrame.getInt(indexSet);
+                G[m - 1] = stepSizes.getStepSizes()[m - 3] * ((float)b - COEFFICIENT_OFFSET[indexSet.length]);
             }
         }
-
 
         int[][] harmonicAllocations = HarmonicAllocation.fromL(L).getAllocations();
         //Harmonic allocation for i = 6 (index 5) will always have the largest allocation - use it to dimension C array
@@ -208,16 +213,17 @@ public class IMBEFrame
         //Alg 69 & 70 - Construct gain vector R as inverse DCT of G and transfer Ri to C[i][1]
         for(int i = 1; i <= 6; i++)
         {
-            for(int m = 1; m <= 6; m++)
+            C[i][1] = G[1];
+
+            for(int m = 2; m <= 6; m++)
             {
-                C[i][1] += ((m == 1 ? 1.0f: 2.0f) * G[m] * (float)Math.cos((Math.PI * (float)(m - 1) * ((float)i - 0.5f)) / 6.0f));
+                C[i][1] += (2.0f * G[m] * (float)Math.cos((Math.PI * (float)(m - 1) * ((float)i - 0.5f)) / 6.0f));
             }
         }
 
         //Alg 71 and 72 - Decode the higher order DCT Coefficients
-        int m;
+        int m = 0;
         int[] indexSet;
-        float bm;
 
         for(int i = 1; i <= 6; i++)
         {
@@ -232,8 +238,8 @@ public class IMBEFrame
 
                     if(indexSet.length > 0)
                     {
-                        bm = mFrame.getInt(indexSet);
-                        C[i][j] = stepSizes.getStepSizes()[m - 3] * (bm - (float)Math.pow(2, indexSet.length - 1) + 0.5f);
+                        int b = mFrame.getInt(indexSet);
+                        C[i][j] = stepSizes.getStepSizes()[m - 3] * ((float)b - COEFFICIENT_OFFSET[indexSet.length]);
                     }
                 }
             }
@@ -250,9 +256,14 @@ public class IMBEFrame
 
             for(int j = 1; j <= Ji; j++)
             {
-                for(int k = 1; k <= Ji; k++)
+                T[l] = C[i][1];
+
+                if(Ji >= 2)
                 {
-                    T[l] += (k == 1 ? 1.0f : 2.0f) * C[i][k] * (float)Math.cos((Math.PI * (float)(k - 1) * ((float)j - 0.5f)) / (float)Ji);
+                    for(int k = 2; k <= Ji; k++)
+                    {
+                        T[l] += 2.0f * C[i][k] * (float)Math.cos((Math.PI * (float)(k - 1) * ((float)j - 0.5f)) / (float)Ji);
+                    }
                 }
 
                 l++;
@@ -371,8 +382,11 @@ public class IMBEFrame
             p = 0.7f;
         }
 
-        float plSum = (p / L) * sum;
+        //Represents the average log2 amplitude of the previous frame after translation to current L, scaled by the
+        //prediction coefficient.
+        float plSum = p / L * sum;
 
+        //Algorithm #77
         for(int l = 1; l <= L; l++)
         {
             log2M[l] = T[l]

@@ -37,20 +37,6 @@ public class IMBEAudioCodec implements IAudioCodec
         mSynthesizer = new IMBESynthesizer();
     }
 
-    /**
-     * Sets audio gain for synthesized audio.
-     * @param gain in range 0.0 < gain < 16.0 (default = 1.0)
-     */
-    @Override
-    public void setAudioGain(float gain)
-    {
-        mSynthesizer.setAudioGain(gain);
-    }
-
-    public void dispose()
-    {
-    }
-
     @Override
     public void reset()
     {

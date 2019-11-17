@@ -553,4 +553,20 @@ public enum PRBA24
 
         throw new IllegalArgumentException("Value must be in range 0-511.  Unsupported value: " + value);
     }
+
+    public static void main(String[] args)
+    {
+        for(int x = 0; x < 512; x += 2)
+        {
+            PRBA24 a = PRBA24.values()[x];
+            PRBA24 b = PRBA24.values()[x + 1];
+
+            float delta = Math.abs(a.getG2() - b.getG2());
+
+            if(delta > .1)
+            {
+                System.out.println(a + " > " + b + " Diff:" + delta);
+            }
+        }
+    }
 }

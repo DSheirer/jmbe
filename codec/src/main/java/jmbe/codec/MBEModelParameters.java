@@ -19,21 +19,21 @@
 
 package jmbe.codec;
 
-import java.util.Arrays;
-
 /**
  * Base Multi-Band Excitation (MBE) voice frame model parameters required to synthesize an audio frame.
  */
 public abstract class MBEModelParameters
 {
+    private static final float PI_96 = 0.96f * (float)Math.PI;
     private float mLocalEnergy = 75000.0f;
     private int mAmplitudeThreshold = 20480;
     private boolean[] mVoicingDecisions;
     private float[] mLog2SpectralAmplitudes;
-    private float[] mSpectralAmplitudes;
-    private float[] mEnhancedSpectralAmplitudes;
+    protected float[] mSpectralAmplitudes;
+    protected float[] mEnhancedSpectralAmplitudes;
     private float mErrorRate;
     private int mErrorCount;
+    private int mErrorCount4;
     private int mRepeatCount = 0;
 
     private IFundamentalFrequency mMBEFundamentalFrequency;
@@ -210,6 +210,19 @@ public abstract class MBEModelParameters
     }
 
     /**
+     * Bit error count for coset 4
+     */
+    public int getErrorCount4()
+    {
+        return mErrorCount4;
+    }
+
+    public void setErrorCount4(int errorCount4)
+    {
+        mErrorCount4 = errorCount4;
+    }
+
+    /**
      * Number of times this frame has been repeated
      */
     public int getRepeatCount()
@@ -307,14 +320,15 @@ public abstract class MBEModelParameters
 
         float[] spectralAmplitudes = getSpectralAmplitudes();
 
-        for(int l = 1; l < spectralAmplitudes.length; l++)
+        int L = getL();
+
+        for(int l = 1; l <= L; l++)
         {
             float amplitudesSquared = spectralAmplitudes[l] * spectralAmplitudes[l];
             RM[0] += amplitudesSquared;
             RM[1] += (amplitudesSquared * Math.cos(getFundamentalFrequency() * (float)l));
         }
 
-        int L = getL();
         float[] W = new float[L + 1];
 
         float rm0squared = RM[0] * RM[0];
@@ -329,15 +343,12 @@ public abstract class MBEModelParameters
         }
 
         /* Algorithm #107 - calculate enhancement weights (W) */
-        if(RM[0] != 0.0f)
+        for(int l = 1; l <= getL(); l++)
         {
-            for(int l = 1; l <= getL(); l++)
-            {
-                float temp = (0.96f * (float)Math.PI * (rm0squared + rm1squared -
-                    (2.0f * RM[0] * RM[1] * (float)Math.cos(getFundamentalFrequency() * (float)l)))) /
-                    (getFundamentalFrequency() * RM[0] * (rm0squared - rm1squared));
-                W[l] = (float)(Math.sqrt(spectralAmplitudes[l]) * Math.pow(temp, 0.25));
-            }
+            float temp = (PI_96 * (rm0squared + rm1squared -
+                (2.0f * RM[0] * RM[1] * (float)Math.cos(getFundamentalFrequency() * (float)l)))) /
+                (getFundamentalFrequency() * RM[0] * (rm0squared - rm1squared));
+            W[l] = (float)(Math.sqrt(spectralAmplitudes[l]) * Math.pow(temp, 0.25));
         }
 
         /* Algorithm #108 - apply weights to produce enhanced amplitudes */
@@ -387,10 +398,7 @@ public abstract class MBEModelParameters
 
         setEnhancedSpectralAmplitudes(enhancedSpectralAmplitudes);
 
-        if(requiresAdaptiveSmoothing())
-        {
-            applyAdaptiveSmoothing(previousAmplitudeThreshold);
-        }
+        applyAdaptiveSmoothing(previousAmplitudeThreshold);
     }
 
     /**
@@ -412,7 +420,7 @@ public abstract class MBEModelParameters
         {
             float energy = (float)Math.pow(getLocalEnergy(), 0.375f);
 
-            if(getErrorRate() <= 0.0125f && getErrorCountTotal() == 0)
+            if(getErrorRate() <= 0.0125f && getErrorCount4() == 0)
             {
                 VM = (45.255f * energy) / (float)Math.exp(277.26f * getErrorRate());
             }
@@ -420,39 +428,47 @@ public abstract class MBEModelParameters
             {
                 VM = 1.414f * energy;
             }
+
+            //Voicing decisions only have to be smoothed in the presence of errors
+            boolean[] voicingDecisions = getVoicingDecisions();
+
+            for(int l = 1; l <= getL(); l++)
+            {
+                float amplitude = enhancedSpectralAmplitudes[l];
+
+                /* Algorithm #113 - apply adaptive threshold to voice/no voice decisions */
+                voicingDecisions[l] = ((amplitude > VM) ? true : voicingDecisions[l]);
+            }
+
+            setVoicingDecisions(voicingDecisions);
         }
 
-        float amplitudeMeasure = 0.0f;
-
-        boolean[] voicingDecisions = getVoicingDecisions();
+        float Am = 0.0f;
 
         for(int l = 1; l <= getL(); l++)
         {
-            float amplitude = enhancedSpectralAmplitudes[l];
-
-            /* Algorithm #113 - apply adaptive threshold to voice/no voice decisions */
-            voicingDecisions[l] = ((amplitude > VM) ? true : voicingDecisions[l]);
-
             /* Algorithm #114 - calculate amplitude measure */
-            amplitudeMeasure += enhancedSpectralAmplitudes[l];
+            Am += enhancedSpectralAmplitudes[l];
         }
 
-        setVoicingDecisions(voicingDecisions);
+        int Tm = 0;
 
         /* Algorithm #115 - calculate amplitude threshold */
         if(getErrorRate() <= 0.005 && getErrorCountTotal() <= 6)
         {
-            setAmplitudeThreshold(20480);
+            Tm = 20480;
         }
         else
         {
-            setAmplitudeThreshold(6000 - (300 * getErrorCountTotal()) + previousAmplitudeThresholdTM);
+            Tm = (6000 - (300 * getErrorCountTotal()) + previousAmplitudeThresholdTM);
         }
 
+        setAmplitudeThreshold(Tm);
+
         //Algorithm #116 - scale enhanced spectral amplitudes if amplitude measure is greater than amplitude threshold
-        if(getAmplitudeThreshold() <= amplitudeMeasure)
+        if(Am > Tm)
         {
-            float scale = (float)getAmplitudeThreshold() / amplitudeMeasure;
+            float scale = (float)Tm / Am;
 
             for(int l = 1; l < getL() + 1; l++)
             {

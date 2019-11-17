@@ -22,6 +22,10 @@ package jmbe.codec.imbe;
 import jmbe.codec.FrameType;
 import jmbe.codec.IFundamentalFrequency;
 
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.TreeMap;
+
 /**
  * Fundamental frequency enumeration used for decoding the value of the information vector b0 using the formulas
  * detailed in section 6.1 of the vocoder specification.
@@ -245,13 +249,25 @@ public enum IMBEFundamentalFrequency implements IFundamentalFrequency
     DEFAULT(134),  //L = 30 & w0 = 0.2985 * Pi
     INVALID(-1);
 
+    private int mIndex;
     private int mL;
     private float mFrequency;
+    private static Map<Integer,IMBEFundamentalFrequency> LOOKUP_MAP = new TreeMap<>();
+    private static final EnumSet<IMBEFundamentalFrequency> VALID_VALUES = EnumSet.range(W0, W207);
 
     IMBEFundamentalFrequency(int index)
     {
+        mIndex = index;
         mFrequency = (float)(4.0 * Math.PI / ((double)index + 39.5));
         mL = (int)Math.floor(0.9254 * Math.floor((Math.PI / mFrequency) + 0.25));
+    }
+
+    static
+    {
+        for(IMBEFundamentalFrequency frequency:VALID_VALUES)
+        {
+            LOOKUP_MAP.put(frequency.mIndex, frequency);
+        }
     }
 
     public int getL()
@@ -272,9 +288,11 @@ public enum IMBEFundamentalFrequency implements IFundamentalFrequency
 
     public static IMBEFundamentalFrequency fromValue(int value)
     {
-        if(0 <= value && value <= 207)
+        IMBEFundamentalFrequency frequency = LOOKUP_MAP.get(value);
+
+        if(frequency != null)
         {
-            return IMBEFundamentalFrequency.values()[value];
+            return frequency;
         }
 
         return IMBEFundamentalFrequency.INVALID;

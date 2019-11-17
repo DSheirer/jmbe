@@ -20,7 +20,6 @@
 package jmbe.codec.ambe;
 
 import jmbe.audio.AudioWithMetadata;
-import jmbe.audio.AudioWithoutMetadata;
 import jmbe.codec.FrameType;
 import jmbe.iface.IAudioCodec;
 import jmbe.iface.IAudioWithMetadata;
@@ -39,16 +38,6 @@ public class AMBEAudioCodec implements IAudioCodec
 
     public AMBEAudioCodec()
     {
-    }
-
-    /**
-     * Sets audio gain for synthesized audio.
-     * @param gain in range 0.0 < gain < 16.0 (default = 1.0)
-     */
-    @Override
-    public void setAudioGain(float gain)
-    {
-        mSynthesizer.setAudioGain(gain);
     }
 
     /**
@@ -100,7 +89,6 @@ public class AMBEAudioCodec implements IAudioCodec
             {
                 audioWithMetadata.addMetadata("KNOX", tone.toString());
             }
-
         }
 
         return audioWithMetadata;

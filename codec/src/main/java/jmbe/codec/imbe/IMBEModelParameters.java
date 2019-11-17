@@ -20,8 +20,6 @@
 package jmbe.codec.imbe;
 
 import jmbe.codec.MBEModelParameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -30,12 +28,8 @@ import java.util.Arrays;
  */
 public class IMBEModelParameters extends MBEModelParameters
 {
-    private final static Logger mLog = LoggerFactory.getLogger(IMBEModelParameters.class);
-
     private static final int MAX_HEADROOM_THRESHOLD = 3;
-
     private int mErrorCountCoset0 = 0;  //E0
-    private int mErrorCountCoset4 = 0;  //E4
 
     /**
      * Constructs a default set of model parameters with the voicing
@@ -58,7 +52,8 @@ public class IMBEModelParameters extends MBEModelParameters
             spectralAmplitudes[x] = 1.0f;
         }
 
-        setSpectralAmplitudes(spectralAmplitudes, getLocalEnergy(), getAmplitudeThreshold());
+        mSpectralAmplitudes = spectralAmplitudes;
+        mEnhancedSpectralAmplitudes = spectralAmplitudes;
     }
 
     public IMBEModelParameters()
@@ -137,8 +132,8 @@ public class IMBEModelParameters extends MBEModelParameters
             setAmplitudeThreshold(previous.getAmplitudeThreshold());
             setLocalEnergy(previous.getLocalEnergy());
             mErrorCountCoset0 = previous.getErrorCountCoset0();
-            mErrorCountCoset4 = previous.getErrorCountCoset4();
             setErrorCountTotal(previous.getErrorCountTotal());
+            setErrorCount4(previous.getErrorCount4());
             setErrorRate(previous.getErrorRate());
 
             /* Increment the previous repeat count to indicate that this frame
@@ -158,8 +153,8 @@ public class IMBEModelParameters extends MBEModelParameters
     public void setErrors(float previousErrorRate, int errorsCoset0, int errorsCoset4, int errorsTotal)
     {
         mErrorCountCoset0 = errorsCoset0;
-        mErrorCountCoset4 = errorsCoset4;
         setErrorCountTotal(errorsTotal);
+        setErrorCount4(errorsCoset4);
         setErrorRate((0.95f * previousErrorRate) + (0.000365f * errorsTotal));
     }
 
@@ -169,14 +164,6 @@ public class IMBEModelParameters extends MBEModelParameters
     public int getErrorCountCoset0()
     {
         return mErrorCountCoset0;
-    }
-
-    /**
-     * Number of bit errors detected/corrected in coset word 4 of this frame
-     */
-    public int getErrorCountCoset4()
-    {
-        return mErrorCountCoset4;
     }
 
     public String toString()
@@ -191,7 +178,7 @@ public class IMBEModelParameters extends MBEModelParameters
         sb.append("\n  Spectral " + Arrays.toString(getSpectralAmplitudes()));
         sb.append("\n  Enhanced Spectral " + Arrays.toString(getEnhancedSpectralAmplitudes()));
         sb.append("\n  Coset 0 Errors: " + mErrorCountCoset0);
-        sb.append("\n  Coset 4 Errors: " + mErrorCountCoset4);
+        sb.append("\n  Coset 4 Errors: " + getErrorCount4());
         sb.append("\n  Total Errors: " + getErrorCountTotal());
         sb.append("\n  Error Rate: " + getErrorRate());
         sb.append("\n  Repeat Count: " + getRepeatCount());
