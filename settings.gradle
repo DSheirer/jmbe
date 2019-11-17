@@ -1,2 +1,5 @@
 rootProject.name = 'jmbe'
-include 'api', 'jmbe'
+include 'api'
+include 'codec'
+include 'creator'
+
