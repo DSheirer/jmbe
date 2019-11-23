@@ -24,31 +24,31 @@ Environment (JRE) that most users have installed on their computers.
 	
 	**Liberica OpenJDK: (https://bell-sw.com/)**
 
-or
+-or-
 
-**Oracle: (http://www.oracle.com/technetwork/java/javase/downloads/index.html)**
+	**Oracle: (http://www.oracle.com/technetwork/java/javase/downloads/index.html)**
 
 * Download the source code branch from GitHub:
 
-**Master (current): (https://github.com/DSheirer/jmbe/archive/master.zip)**
+	**Master (current): (https://github.com/DSheirer/jmbe/archive/master.zip)**
 
 -or-
 
-**Version 0.3.4: (https://github.com/DSheirer/jmbe/archive/v0.3.4.zip)**
+	**Version 0.3.4: (https://github.com/DSheirer/jmbe/archive/v0.3.4.zip)**
 
 # WINDOWS: Compiling the Library from Source Code
 
 * Setup the JAVA_HOME and PATH environment variables
 
-(https://www.theserverside.com/tutorial/How-to-install-the-JDK-on-Windows-and-setup-JAVA_HOME)
+	(https://www.theserverside.com/tutorial/How-to-install-the-JDK-on-Windows-and-setup-JAVA_HOME)
 
 * Verify that JAVA_HOME points to the Java Development Kit (JDK) version 8 or higher.  At a command prompt type:
 
-**> echo %JAVA_HOME%**
+	**> echo %JAVA_HOME%**
 
 This should respond with the directory where you have installed the JDK.
 
-**> javac -version**
+	**> javac -version**
 
 This should respond with the java version.
 
@@ -56,11 +56,11 @@ This should respond with the java version.
 
 * Using the command prompt, change to the directory where you downloaded and unzipped the source code (jmbe-master.zip in this example):
 
-**> cd C:\Users\Denny\Downloads\jmbe-master**
+	**> cd C:\Users\Denny\Downloads\jmbe-master**
 
 * Run the build script
 
-**> gradlew.bat build**
+	**> gradlew.bat build**
 
 * The build script will compile the source code and create the library.  The first time that you run the build script,
 it may download some additional files needed for installing the gradle build tool and some java libraries needed for
@@ -68,7 +68,7 @@ compiling the jmbe library code.
 
 * The compiled JMBE library will be located in a sub-folder named '\build\libs', for example:
 
-**> C:\Users\Denny\Downloads\jmbe-master\build\libs\jmbe-1.0.0.jar**
+	**> C:\Users\Denny\Downloads\jmbe-master\build\libs\jmbe-1.0.0.jar**
 
 * Follow the instructions for the application that will use the JMBE library.
 
@@ -82,7 +82,7 @@ Note: for **sdrtrunk** use the menu item **View > Preferences** and then use the
 
 * Verify that JAVA_HOME points to the Java Development Kit (JDK) version 8 or higher.  Open a terminal and type:
 
-**> javac -version**
+	**> javac -version**
 
 This should respond with the java version.
 
@@ -90,11 +90,11 @@ This should respond with the java version.
 
 * In the terminal window, change to the directory where you downloaded and unzipped the source code (jmbe-master.zip in this example):
 
-> denny@denny-desktop:~$ cd Downloads\jmbe-master
+	**> denny@denny-desktop:~$ cd Downloads\jmbe-master**
 
 * Run the build script
 
-> ./gradlew build
+	**> ./gradlew build**
 
 * The build script will compile the source code and create the library.  The first time that you run the build script,
 it may download some additional files needed for installing the gradle build tool and some java libraries needed for
@@ -102,7 +102,7 @@ compiling the jmbe library code.
 
 * The compiled JMBE library will be located at:
 
-> ~\Downloads\jmbe-master\build\libs\jmbe-1.0.0.jar
+	**> ~\Downloads\jmbe-master\build\libs\jmbe-1.0.0.jar**
 
 * Follow the instructions for the application that will use the JMBE library.  
 
