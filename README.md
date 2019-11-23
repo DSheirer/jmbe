@@ -76,6 +76,10 @@ Note: for **sdrtrunk** use the menu item **View > Preferences** and then use the
 
 * Verify that JAVA_HOME points to the Java Development Kit (JDK) version 8 or higher.  Open a terminal and type:
 
+  * **> echo $JAVA_HOME$**
+
+This should respond with the directory where you have installed the JDK.
+
   * **> javac -version**
 
 This should respond with the java version.
