@@ -42,6 +42,8 @@ Environment (JRE) that most users have installed on their computers.
 
 This should respond with the directory where you have installed the JDK.
 
+* Verify that your computer is using the correct version of the Java compiler.  At a command prompt type:
+
   * **> javac -version**
 
 This should respond with the java version.
@@ -79,6 +81,8 @@ Note: for **sdrtrunk** use the menu item **View > Preferences** and then use the
   * **> echo $JAVA_HOME$**
 
 This should respond with the directory where you have installed the JDK.
+
+* Verify that your computer is using the correct version of the Java compiler.  At a command prompt type:
 
   * **> javac -version**
 
