@@ -27,7 +27,7 @@ Environment (JRE) that most users have installed on their computers.
 
 * Download the source code branch from GitHub:
 
-  * **Master (current): (https://github.com/DSheirer/jmbe/archive/master.zip)**
+  * **Version 1.0.0 (current): (https://github.com/DSheirer/jmbe/archive/v1.0.0.zip)**
   * **Version 0.3.4 (previous): (https://github.com/DSheirer/jmbe/archive/v0.3.4.zip)**
 
 # WINDOWS: Compiling the Library from Source Code
@@ -50,7 +50,7 @@ This should respond with the java version.
 
 * Using the command prompt, change to the directory where you downloaded and unzipped the source code (jmbe-master.zip in this example):
 
-  * **> cd C:\Users\Denny\Downloads\jmbe-master**
+  * **> cd C:\Users\Denny\Downloads\jmbe-1.0.0**
 
 * Run the build script
 
@@ -84,7 +84,7 @@ This should respond with the java version.
 
 * In the terminal window, change to the directory where you downloaded and unzipped the source code (jmbe-master.zip in this example):
 
-  * **> denny@denny-desktop:~$ cd Downloads\jmbe-master**
+  * **> denny@denny-desktop:~$ cd Downloads\jmbe-1.0.0**
 
 * Run the build script
 
