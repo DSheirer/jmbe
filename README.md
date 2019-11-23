@@ -4,7 +4,7 @@ Copyright (C) 2015-2019 Dennis Sheirer
 
 Audio conversion library for decoding MBE encoded audio frames.
   
-Supports IMBE 144-bit and AMBE 72-bit encoded 20 millisecond audio frames to 8 kHz 16-bit mono PCM encoded audio.
+Decodes IMBE 144-bit and AMBE 72-bit encoded 20 millisecond audio frames to 8 kHz 16-bit mono PCM encoded audio.
 
 **PATENT NOTICE**
 
