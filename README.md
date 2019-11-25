@@ -104,7 +104,7 @@ compiling the jmbe library code.
 
 * The compiled JMBE library will be located at:
 
-  * **> ~\Downloads\jmbe-master\build\libs\jmbe-1.0.0.jar**
+  * **> ~\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.0.jar**
 
 * Follow the instructions for the application that will use the JMBE library.  
 
