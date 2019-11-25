@@ -62,9 +62,9 @@ This should respond with the java version.
 it may download some additional files needed for installing the gradle build tool and some java libraries needed for
 compiling the jmbe library code.
 
-* The compiled JMBE library will be located in a sub-folder named '\build\libs', for example:
+* The compiled JMBE library will be located in a sub-folder named '\codec\build\libs', for example:
 
-  * **> C:\Users\Denny\Downloads\jmbe-master\build\libs\jmbe-1.0.0.jar**
+  * **> C:\Users\Denny\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.0.jar**
 
 * Follow the instructions for the application that will use the JMBE library.
 
