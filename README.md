@@ -1,10 +1,10 @@
-Copyright (C) 2015-2018 Dennis Sheirer
+Copyright (C) 2015-2019 Dennis Sheirer
 
 # jmbe - Java Multi-Band Excitation library
 
 Audio conversion library for decoding MBE encoded audio frames.
   
-Currently supports conversion of IMBE 144-bit/20 millisecond audio frames to 48 kHz 16-bit mono PCM encoded audio.
+Decodes IMBE 144-bit and AMBE 72-bit encoded 20 millisecond audio frames to 8 kHz 16-bit mono PCM encoded audio.
 
 **PATENT NOTICE**
 
@@ -19,49 +19,56 @@ Note: this patent notice is verbatim from the mbelib library README at (https://
 
 # Preparing to Compile the Library From Source Code
 
-* Install the Java 8 (or higher) Java Development Kit (JDK). Note: this isdifferent from the Java Runtime
+* Install the Java 8 (or higher) Java Development Kit (JDK). Note: this is different from the Java Runtime
 Environment (JRE) that most users have installed on their computers.
 	
-(http://www.oracle.com/technetwork/java/javase/downloads/index.html)
+  * **Liberica OpenJDK: (https://bell-sw.com/)**
+  * **Oracle: (http://www.oracle.com/technetwork/java/javase/downloads/index.html)**
 
-* Download the latest version of the source code from GitHub from (https://github.com/DSheirer/jmbe/releases)
+* Download the source code branch from GitHub:
+
+  * **Version 1.0.0 (current): (https://github.com/DSheirer/jmbe/archive/v1.0.0.zip)**
+  * **Version 0.3.4 (previous): (https://github.com/DSheirer/jmbe/archive/v0.3.4.zip)**
 
 # WINDOWS: Compiling the Library from Source Code
 
 * Setup the JAVA_HOME and PATH environment variables
 
-(https://www.theserverside.com/tutorial/How-to-install-the-JDK-on-Windows-and-setup-JAVA_HOME)
+  * (https://www.theserverside.com/tutorial/How-to-install-the-JDK-on-Windows-and-setup-JAVA_HOME)
 
 * Verify that JAVA_HOME points to the Java Development Kit (JDK) version 8 or higher.  At a command prompt type:
 
-> echo %JAVA_HOME%
+  * **> echo %JAVA_HOME%**
 
 This should respond with the directory where you have installed the JDK.
 
-> javac -version
+* Verify that your computer is using the correct version of the Java compiler.  At a command prompt type:
+
+  * **> javac -version**
 
 This should respond with the java version.
 
 * Unzip the source code file with a tool like 7-Zip or using the Windows File Manager (right-click on file)
 
-* Using the command prompt, change to the directory where you downloaded and unzipped the source code (jmbe-0.3.3a.zip in this example):
+* Using the command prompt, change to the directory where you downloaded and unzipped the source code (jmbe-master.zip in this example):
 
-> cd C:\Users\Denny\Downloads\jmbe-0.3.3a\jmbe
+  * **> cd C:\Users\Denny\Downloads\jmbe-1.0.0**
 
 * Run the build script
 
-> gradlew.bat build
+  * **> gradlew.bat build**
 
 * The build script will compile the source code and create the library.  The first time that you run the build script,
 it may download some additional files needed for installing the gradle build tool and some java libraries needed for
 compiling the jmbe library code.
 
-* The compiled JMBE library will be located in a sub-folder named '\build\libs', for example:
+* The compiled JMBE library will be located in a sub-folder named '\codec\build\libs', for example:
 
-> C:\Users\Denny\Downloads\jmbe-0.3.4\jmbe\build\libs\jmbe-0.3.3.jar
+  * **> C:\Users\Denny\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.0.jar**
 
-* Copy the compiled JMBE library jar to the same folder where your application is located and then start the application
-like normal.  The JMBE library will be automatically discovered at runtime.
+* Follow the instructions for the application that will use the JMBE library.
+
+Note: for **sdrtrunk** use the menu item **View > Preferences** and then use the **JMBE Audio Library** section to tell sdrtrunk where your compiled JMBE library is located. 
 
 # LINUX: Compiling the Library from Source Code
 
@@ -71,19 +78,25 @@ like normal.  The JMBE library will be automatically discovered at runtime.
 
 * Verify that JAVA_HOME points to the Java Development Kit (JDK) version 8 or higher.  Open a terminal and type:
 
-> javac -version
+  * **> echo $JAVA_HOME$**
+
+This should respond with the directory where you have installed the JDK.
+
+* Verify that your computer is using the correct version of the Java compiler.  At a command prompt type:
+
+  * **> javac -version**
 
 This should respond with the java version.
 
 * Unzip the source code file with a tool like 7-Zip or ark using the File Manager (right-click on file)
 
-* In the terminal window, change to the directory where you downloaded and unzipped the source code (jmbe-0.3.4.zip in this example):
+* In the terminal window, change to the directory where you downloaded and unzipped the source code (jmbe-master.zip in this example):
 
-> denny@denny-desktop:~$ cd Downloads\jmbe-0.3.3a\jmbe
+  * **> denny@denny-desktop:~$ cd Downloads\jmbe-1.0.0**
 
 * Run the build script
 
-> ./gradlew build
+  * **> ./gradlew build**
 
 * The build script will compile the source code and create the library.  The first time that you run the build script,
 it may download some additional files needed for installing the gradle build tool and some java libraries needed for
@@ -91,10 +104,11 @@ compiling the jmbe library code.
 
 * The compiled JMBE library will be located at:
 
-> ~\Downloads\jmbe-0.3.4\jmbe\build\libs\jmbe-0.3.3.jar
+  * **> ~\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.0.jar**
 
-* Copy the compiled JMBE library jar to the same folder where your application is located and then start the application
-like normal.  The JMBE library will be automatically discovered at runtime.
+* Follow the instructions for the application that will use the JMBE library.  
+
+Note: for **sdrtrunk** use the menu item **View > Preferences** and then use the **JMBE Audio Library** section to tell sdrtrunk where your compiled JMBE library is located. 
 	
 # Software Developers - Using the JMBE audio conversion library in your own java program
 
@@ -110,37 +124,38 @@ LINUX:
 
 * Add the following code to your program
 	
-		AudioConversionLibrary library = null;
-		
-		AudioConverter converter = null;
+		IAudioCodecLibrary audioCodecLibrary = null;
 		
 		try
 		{
-			Class temp = Class.forName( "jmbe.JMBEAudioLibrary" );
-			
-			library = (AudioConversionLibrary)temp.newInstance();
+                    URLClassLoader childClassLoader = new URLClassLoader(new URL[]{path.toUri().toURL()},
+                        this.getClass().getClassLoader());
 
-			converter = library.getAudioConverter( "IMBE", 
-					AudioFormats.PCM_SIGNED_48KHZ_16BITS );
-			
-			mCanConvertAudio = ( converter != null );
-		} 
-		catch ( ClassNotFoundException e1 )
+                    Class classToLoad = Class.forName("jmbe.JMBEAudioLibrary", true, childClassLoader);
+
+                    Object instance = classToLoad.getDeclaredConstructor().newInstance();
+
+                    if(instance instanceof IAudioCodecLibrary)
+                    {
+                        audioCodecLibrary = (IAudioCodecLibrary)instance;
+    		    } 
+		catch (Exception e)
 		{
-			mLog.error( "Couldn't find/load JMBE audio conversion library", e1 );
-		}
-		catch ( InstantiationException e1 )
-		{
-			mLog.error( "Couldn't instantiate JMBE audio conversion library class" );
-		}
-		catch ( IllegalAccessException e1 )
-		{
-			mLog.error( "Couldn't load JMBE audio conversion library due to security restrictions" );
+		    //error handling
 		}
 	
-* To convert 18-byte IMBE audio frames, use the following code:
+* To convert 18-byte IMBE audio frames:
 
-		if( converter != null )
-		{
-			float[] convertedAudio = converter.decode( imbeFrame );
-		}
+		IAudioCodec audioCodec = library.getAudioConverter("IMBE");
+		float[] convertedAudio = audioCodec.getAudio(byte[] imbeFrameData);
+
+* To convert 9-byte AMBE audio and tone frames:
+
+		IAudioCodec audioCodec = library.getAudioConverter("AMBE");
+		float[] convertedAudio = audioCodec.getAudio(byte[] ambeFrameData);
+
+* To convert 9-byte AMBE audio frames and tone frames along with tone frame metadata:
+
+		IAudioCodec audioCodec = library.getAudioConverter("AMBE");
+		IAudioWithMetadata convertedAudio = audioCodec.getAudioWithMetadata(byte[] ambeFrameData);
+
