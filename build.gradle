@@ -16,3 +16,7 @@ idea {
     }
 }
 
+//Delete the top-level root build directory post-build
+gradle.buildFinished {
+    project.buildDir.deleteDir()
+}
