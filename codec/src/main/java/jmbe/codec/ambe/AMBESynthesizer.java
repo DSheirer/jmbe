@@ -49,7 +49,6 @@ public class AMBESynthesizer extends MBESynthesizer
 
     private ToneGenerator mToneGenerator = new ToneGenerator();
     private AMBEModelParameters mPreviousFrame = new AMBEModelParameters();
-    private int mDebugFrameCounter = 0;
 
     /**
      * AMBE synthesizer producing 8 kHz 16-bit audio from AMBE audio (voice/tone) frames
@@ -94,14 +93,10 @@ public class AMBESynthesizer extends MBESynthesizer
      */
     public float[] getAudio(AMBEFrame frame)
     {
-        mDebugFrameCounter++;
-
         float[] audio = null;
 
         if(frame.isToneFrame())
         {
-            System.out.println(mDebugFrameCounter + "\tTone Frame");
-
             if(frame.getToneParameters().isValidTone())
             {
                 audio = getTone(frame.getToneParameters());
