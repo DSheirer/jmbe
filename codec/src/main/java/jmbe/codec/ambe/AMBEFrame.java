@@ -61,7 +61,8 @@ public class AMBEFrame
     private static final int[] VECTOR_U3_B6_LOW = {10};
     private static final int[] VECTOR_U3_B7_LOW = {11};
     private static final int[] VECTOR_U3_B8_LOW = {12, 13};
-    private static final int[] VECTOR_U0_AD = {6, 7, 8, 9, 10, 11};
+    private static final int[] VECTOR_U0_AD_HIGH = {6, 7, 8, 9, 10, 11};
+    private static final int[] VECTOR_U3_AD_LOW = {8};
     private static final int[] VECTOR_U1_ID = {0, 1, 2, 3, 4, 5, 6, 7};
 
     private BinaryFrame mFrame;
@@ -115,12 +116,22 @@ public class AMBEFrame
         vectorC1.xor(modulationVector);
         mErrors[1] = Golay23.checkAndCorrect(vectorC1, 0);
         int b0 = (vectorC0.getInt(VECTOR_U0_B0_HIGH) << 3) + vectorC3.getInt(VECTOR_U3_B0_LOW);
-        mFundamentalFrequency = AMBEFundamentalFrequency.fromValue(b0);
+        int errorCount = mErrors[0] + mErrors[1];
+
+        //Error count of 3 + 3 indicates a bad decode -- tag the frame as an erasure frame
+        if(errorCount >= 6)
+        {
+            mFundamentalFrequency = AMBEFundamentalFrequency.W120; //ERASURE
+        }
+        else
+        {
+            mFundamentalFrequency = AMBEFundamentalFrequency.fromValue(b0);
+        }
 
         if(mFundamentalFrequency.getFrameType() == FrameType.TONE)
         {
             mTone = Tone.fromValue(vectorC0.getInt(VECTOR_U1_ID));
-            mToneAmplitude = vectorC1.getInt(VECTOR_U0_AD);
+            mToneAmplitude = (vectorC1.getInt(VECTOR_U0_AD_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_AD_LOW);
         }
         else
         {
