@@ -59,7 +59,9 @@ public class AMBEAudioCodec implements IAudioCodec
     }
 
     /**
-     * Converts the AMBE frame data into PCM audio samples at 8kHz 16-bit rate.
+     * Converts the AMBE frame data into PCM audio samples at 8kHz 16-bit rate and includes metadata about any
+     * tone(s) contained in the frame.
+     *
      * @param frameData byte array for an audio frame
      * @return decoded audio and any associated metadata such as tones or dtmf/knox codes
      */
