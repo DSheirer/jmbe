@@ -43,11 +43,15 @@ public class AMBEFrame
     private static final int[] VECTOR_C2 = {46, 50, 54, 58, 62, 66, 70, 3, 7, 11, 15};
     private static final int[] VECTOR_C3 = {19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63, 67, 71};
     private static final int[] VECTOR_U0 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+    private static final int[] VECTOR_U0_TONE_CHECK = {0, 1, 2, 3, 4, 5};
+    private static final int[] VECTOR_U3_TONE_CHECK = {10, 11, 12, 13};
     private static final int[] VECTOR_U0_B0_HIGH = {0, 1, 2, 3};
     private static final int[] VECTOR_U0_B1_HIGH = {4, 5, 6, 7};
     private static final int[] VECTOR_U0_B2_HIGH = {8, 9, 10, 11};
     private static final int[] VECTOR_U1_B3_HIGH = {0, 1, 2, 3, 4, 5, 6, 7};
+    private static final int[] VECTOR_U1_HIGH_TONE_VERIFY = {0, 1, 2, 3};
     private static final int[] VECTOR_U1_B4_HIGH = {8, 9, 10, 11};
+    private static final int[] VECTOR_U1_LOW_TONE_VERIFY = {8, 9, 10, 11};
     private static final int[] VECTOR_U2_B5_HIGH = {0, 1, 2, 3};
     private static final int[] VECTOR_U2_B6_HIGH = {4, 5, 6};
     private static final int[] VECTOR_U2_B7_HIGH = {7, 8, 9};
@@ -64,9 +68,12 @@ public class AMBEFrame
     private static final int[] VECTOR_U0_AD_HIGH = {6, 7, 8, 9, 10, 11};
     private static final int[] VECTOR_U3_AD_LOW = {8};
     private static final int[] VECTOR_U1_ID = {0, 1, 2, 3, 4, 5, 6, 7};
+    private static final int U0_TONE_FRAME_VALUE = 63;
+    private static final int U3_TONE_FRAME_VALUE = 0;
 
     private BinaryFrame mFrame;
     private AMBEFundamentalFrequency mFundamentalFrequency;
+    private FrameType mFrameType;
     private int[] mErrors = new int[2];
     private Tone mTone;
     private int mToneAmplitude;
@@ -110,7 +117,7 @@ public class AMBEFrame
         BinaryFrame vectorC2 = getVector(VECTOR_C2);
         BinaryFrame vectorC3 = getVector(VECTOR_C3);
 
-        //Error check C0 and descramble and error check C1
+        //Error check C0, then descramble and error check C1
         mErrors[0] = Golay24.checkAndCorrect(vectorC0, 0);
         BinaryFrame modulationVector = getModulationVector(vectorC0.getInt(VECTOR_U0));
         vectorC1.xor(modulationVector);
@@ -118,23 +125,21 @@ public class AMBEFrame
         int b0 = (vectorC0.getInt(VECTOR_U0_B0_HIGH) << 3) + vectorC3.getInt(VECTOR_U3_B0_LOW);
         int errorCount = mErrors[0] + mErrors[1];
 
-        //Error count of 3 + 3 indicates a bad decode -- tag the frame as an erasure frame
-        if(errorCount >= 6)
-        {
-            mFundamentalFrequency = AMBEFundamentalFrequency.W120; //ERASURE
-        }
-        else
-        {
-            mFundamentalFrequency = AMBEFundamentalFrequency.fromValue(b0);
-        }
+        mFundamentalFrequency = AMBEFundamentalFrequency.fromValue(b0);
 
-        if(mFundamentalFrequency.getFrameType() == FrameType.TONE)
+        //Process as either a tone frame or a voice frame.
+        if(errorCount < 6 &&
+           vectorC0.getInt(VECTOR_U0_TONE_CHECK) == U0_TONE_FRAME_VALUE &&
+          (vectorC3.getInt(VECTOR_U3_TONE_CHECK) == U3_TONE_FRAME_VALUE ||
+           vectorC1.getInt(VECTOR_U1_HIGH_TONE_VERIFY) == vectorC1.getInt(VECTOR_U1_LOW_TONE_VERIFY)))
         {
-            mTone = Tone.fromValue(vectorC0.getInt(VECTOR_U1_ID));
-            mToneAmplitude = (vectorC1.getInt(VECTOR_U0_AD_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_AD_LOW);
+            mFrameType = FrameType.TONE;
+            mTone = Tone.fromValue(vectorC1.getInt(VECTOR_U1_ID));
+            mToneAmplitude = (vectorC0.getInt(VECTOR_U0_AD_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_AD_LOW);
         }
         else
         {
+            mFrameType = mFundamentalFrequency.getFrameType();
             mB = new int[9];
             mB[0] = b0;
             mB[1] = (vectorC0.getInt(VECTOR_U0_B1_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_B1_LOW);
@@ -153,7 +158,7 @@ public class AMBEFrame
      */
     public FrameType getFrameType()
     {
-        return mFundamentalFrequency.getFrameType();
+        return mFrameType;
     }
 
     /**
