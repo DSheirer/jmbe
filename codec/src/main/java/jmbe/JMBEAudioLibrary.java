@@ -37,7 +37,7 @@ public class JMBEAudioLibrary implements IAudioCodecLibrary
     @Override
     public int getBuildVersion()
     {
-        return 3;
+        return 4;
     }
 
     @Override
