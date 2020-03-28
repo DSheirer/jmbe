@@ -134,8 +134,6 @@ public class AMBEFrame
            vectorC1.getInt(VECTOR_U1_HIGH_TONE_VERIFY) == vectorC1.getInt(VECTOR_U1_LOW_TONE_VERIFY)))
         {
             mFrameType = FrameType.TONE;
-            mTone = Tone.fromValue(vectorC1.getInt(VECTOR_U1_ID));
-            mToneAmplitude = (vectorC0.getInt(VECTOR_U0_AD_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_AD_LOW);
         }
         else
         {
@@ -150,6 +148,13 @@ public class AMBEFrame
             mB[6] = (vectorC2.getInt(VECTOR_U2_B6_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_B6_LOW);
             mB[7] = (vectorC2.getInt(VECTOR_U2_B7_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_B7_LOW);
             mB[8] = (vectorC2.getInt(VECTOR_U2_B8_HIGH) << 2) + vectorC3.getInt(VECTOR_U3_B8_LOW);
+
+        }
+
+        if(mFrameType == FrameType.TONE)
+        {
+            mTone = Tone.fromValue(vectorC1.getInt(VECTOR_U1_ID));
+            mToneAmplitude = (vectorC0.getInt(VECTOR_U0_AD_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_AD_LOW);
         }
     }
 
