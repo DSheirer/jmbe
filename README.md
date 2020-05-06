@@ -1,4 +1,4 @@
-Copyright (C) 2015-2019 Dennis Sheirer
+Copyright (C) 2015-2020 Dennis Sheirer
 
 # jmbe - Java Multi-Band Excitation library
 
