@@ -27,7 +27,7 @@ Environment (JRE) that most users have installed on their computers.
 
 * Download the source code branch from GitHub:
 
-  * **Version 1.0.5 (current): (https://github.com/DSheirer/jmbe/archive/v1.0.5.zip)**
+  * **Version 1.0.6 (current): (https://github.com/DSheirer/jmbe/archive/v1.0.6.zip)**
   * **Version 0.3.4 (previous): (https://github.com/DSheirer/jmbe/archive/v0.3.4.zip)**
 
 # WINDOWS: Compiling the Library from Source Code
@@ -52,7 +52,7 @@ This should respond with the java version.
 
 * Using the command prompt, change to the directory where you downloaded and unzipped the source code (jmbe-master.zip in this example):
 
-  * **> cd C:\Users\Denny\Downloads\jmbe-1.0.5**
+  * **> cd C:\Users\Denny\Downloads\jmbe-1.0.6**
 
 * Run the build script
 
@@ -64,7 +64,7 @@ compiling the jmbe library code.
 
 * The compiled JMBE library will be located in a sub-folder named '\codec\build\libs', for example:
 
-  * **> C:\Users\Denny\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.5.jar**
+  * **> C:\Users\Denny\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.6.jar**
 
 * Follow the instructions for the application that will use the JMBE library.
 
@@ -92,7 +92,7 @@ This should respond with the java version.
 
 * In the terminal window, change to the directory where you downloaded and unzipped the source code (jmbe-master.zip in this example):
 
-  * **> denny@denny-desktop:~$ cd Downloads\jmbe-1.0.5**
+  * **> denny@denny-desktop:~$ cd Downloads\jmbe-1.0.6**
 
 * Run the build script
 
@@ -104,7 +104,7 @@ compiling the jmbe library code.
 
 * The compiled JMBE library will be located at:
 
-  * **> ~\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.5.jar**
+  * **> ~\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.6.jar**
 
 * Follow the instructions for the application that will use the JMBE library.  
 
