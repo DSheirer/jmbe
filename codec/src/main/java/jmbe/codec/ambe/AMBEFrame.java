@@ -138,6 +138,16 @@ public class AMBEFrame
         else
         {
             mFrameType = mFundamentalFrequency.getFrameType();
+
+            //We should only have non-tone frames at this point.  If the frame type decodes as a tone here, then it's
+            // an error and occasionally happens when there's a very high bit error rate.  Override the fundamental
+            // frequency to W120 (erasure) which will cause a frame repeat sequence.
+            if(mFrameType == FrameType.TONE)
+            {
+                mFundamentalFrequency = AMBEFundamentalFrequency.W120;
+                mFrameType = mFundamentalFrequency.getFrameType();
+            }
+
             mB = new int[9];
             mB[0] = b0;
             mB[1] = (vectorC0.getInt(VECTOR_U0_B1_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_B1_LOW);
