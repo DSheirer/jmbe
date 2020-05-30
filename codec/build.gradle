@@ -25,5 +25,14 @@ jar {
     }
     from rootProject.file('LICENSE')
 
-    println("Your finished JMBE library will be located here: " + archiveFile.get().toString())
+    doLast {
+        if(archiveFile.get().asFile.exists())
+        {
+            println("Your finished JMBE library is located here: " + archiveFile.get().toString())
+        }
+        else
+        {
+            println("Failed to create the JMBE library.")
+        }
+    }
 }
