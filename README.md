@@ -17,6 +17,69 @@ source code.
 
 Note: this patent notice is verbatim from the mbelib library README at (https://github.com/szechyjs/mbelib)
 
+# End Users: Creating the JMBE Library (Version 1.0.7+)
+***YOU DO NOT HAVE TO INSTALL THE JAVA JDK.*** The instructions for creating the JMBE library have changed starting with version 1.0.7.
+
+1. Download the latest **JMBE Creator** for your operating system from the [Releases](https://github.com/DSheirer/jmbe/releases) page.
+2. Unzip the JMBE Creator
+3. Open a command/console window and run the JMBE Creator application
+  * **Windows:**  (unzip directory)/bin/creator.bat
+  * **Linux/OSX:** (unzip directory)/bin/creator
+4. When the program finishes, it will display the location of your JMBE library.
+5. Move the library to a permanent location
+
+Note: for **sdrtrunk** use the menu item **View > Preferences** and then use the **JMBE Audio Library** section to tell sdrtrunk where your compiled JMBE library is located. 
+	
+# Software Developers - Using the JMBE audio conversion library in your own java program
+
+* Follow the same instructions for downloading the source code above.  Use the following command to build the API:
+
+WINDOWS:
+> gradlew.bat api
+
+LINUX:
+> ./gradlew api
+
+* Add the API library jar to your project.
+
+* Add the following code to your program
+	
+		IAudioCodecLibrary audioCodecLibrary = null;
+		
+		try
+		{
+                    URLClassLoader childClassLoader = new URLClassLoader(new URL[]{path.toUri().toURL()},
+                        this.getClass().getClassLoader());
+
+                    Class classToLoad = Class.forName("jmbe.JMBEAudioLibrary", true, childClassLoader);
+
+                    Object instance = classToLoad.getDeclaredConstructor().newInstance();
+
+                    if(instance instanceof IAudioCodecLibrary)
+                    {
+                        audioCodecLibrary = (IAudioCodecLibrary)instance;
+    		    } 
+		catch (Exception e)
+		{
+		    //error handling
+		}
+	
+* To convert 18-byte IMBE audio frames:
+
+		IAudioCodec audioCodec = library.getAudioConverter("IMBE");
+		float[] convertedAudio = audioCodec.getAudio(byte[] imbeFrameData);
+
+* To convert 9-byte AMBE audio and tone frames:
+
+		IAudioCodec audioCodec = library.getAudioConverter("AMBE");
+		float[] convertedAudio = audioCodec.getAudio(byte[] ambeFrameData);
+
+* To convert 9-byte AMBE audio frames and tone frames along with tone frame metadata:
+
+		IAudioCodec audioCodec = library.getAudioConverter("AMBE");
+		IAudioWithMetadata convertedAudio = audioCodec.getAudioWithMetadata(byte[] ambeFrameData);
+
+# Creating Legacy JMBE Library (Versions prior to 1.0.7)
 # Preparing to Compile the Library From Source Code
 
 * Install the Java 8 (or higher) Java Development Kit (JDK). Note: this is different from the Java Runtime
@@ -107,54 +170,3 @@ compiling the jmbe library code.
   * **> ~\Downloads\jmbe-master\codec\build\libs\jmbe-1.0.6.jar**
 
 * Follow the instructions for the application that will use the JMBE library.  
-
-Note: for **sdrtrunk** use the menu item **View > Preferences** and then use the **JMBE Audio Library** section to tell sdrtrunk where your compiled JMBE library is located. 
-	
-# Software Developers - Using the JMBE audio conversion library in your own java program
-
-* Follow the same instructions for downloading the source code above.  Use the following command to build the API:
-
-WINDOWS:
-> gradlew.bat api
-
-LINUX:
-> ./gradlew api
-
-* Add the API library jar to your project.
-
-* Add the following code to your program
-	
-		IAudioCodecLibrary audioCodecLibrary = null;
-		
-		try
-		{
-                    URLClassLoader childClassLoader = new URLClassLoader(new URL[]{path.toUri().toURL()},
-                        this.getClass().getClassLoader());
-
-                    Class classToLoad = Class.forName("jmbe.JMBEAudioLibrary", true, childClassLoader);
-
-                    Object instance = classToLoad.getDeclaredConstructor().newInstance();
-
-                    if(instance instanceof IAudioCodecLibrary)
-                    {
-                        audioCodecLibrary = (IAudioCodecLibrary)instance;
-    		    } 
-		catch (Exception e)
-		{
-		    //error handling
-		}
-	
-* To convert 18-byte IMBE audio frames:
-
-		IAudioCodec audioCodec = library.getAudioConverter("IMBE");
-		float[] convertedAudio = audioCodec.getAudio(byte[] imbeFrameData);
-
-* To convert 9-byte AMBE audio and tone frames:
-
-		IAudioCodec audioCodec = library.getAudioConverter("AMBE");
-		float[] convertedAudio = audioCodec.getAudio(byte[] ambeFrameData);
-
-* To convert 9-byte AMBE audio frames and tone frames along with tone frame metadata:
-
-		IAudioCodec audioCodec = library.getAudioConverter("AMBE");
-		IAudioWithMetadata convertedAudio = audioCodec.getAudioWithMetadata(byte[] ambeFrameData);
