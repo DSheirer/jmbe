@@ -91,6 +91,7 @@ public class Creator
 
         List<Path> toCompile = new ArrayList<>();
 
+        System.out.println("Unzipping: Source Code");
         try(ZipFile zf = new ZipFile(downloadFile.toFile()))
         {
             Enumeration<? extends ZipEntry> zipEntries = zf.entries();
@@ -121,7 +122,7 @@ public class Creator
                 }
                 catch(IOException ioe)
                 {
-                    System.out.println("I/O Error While Unzipping Source Code Files");
+                    System.out.println("Failed: I/O Error While Unzipping Source Code Files");
                     ioe.printStackTrace();
                     System.exit(EXIT_CODE_IO_ERROR);
                 }
@@ -129,12 +130,13 @@ public class Creator
         }
         catch(Exception e)
         {
-            System.out.println("Error unzipping source code file");
+            System.out.println("Failed: Error unzipping source code file - " + e.getLocalizedMessage());
         }
 
         if(!toCompile.isEmpty())
         {
             compile(toCompile, getOptions(downloadDirectory));
+            System.out.println("Deleting: Compiled Interfaces");
             deleteInterfaceClasses(getOutputDirectory(downloadDirectory));
         }
     }
@@ -293,37 +295,34 @@ public class Creator
      */
     public static String getLibraryClassPath()
     {
-        String current = System.getProperty("user.dir");
+        Path currentPath = Path.of(Creator.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+        System.out.println("Discovering: Current Location [" + currentPath.toString() + "]");
 
-        if(current != null && !current.isEmpty())
+        if(Files.exists(currentPath))
         {
-            Path currentPath = Path.of(current);
-            if(Files.exists(currentPath))
+            Path parent = currentPath.getParent();
+            System.out.println("Discovering: Compile Dependencies [" + parent.toString() + "]");
+            StringJoiner joiner = new StringJoiner(String.valueOf(File.pathSeparatorChar));
+
+            try
             {
-                Path parent = currentPath.getParent();
-                Path libsDirectory = parent.resolve("lib");
-                System.out.println("Looking for required compile libraries here: " + libsDirectory.toString());
-                StringJoiner joiner = new StringJoiner(String.valueOf(File.pathSeparatorChar));
-
-                try
-                {
-                    DirectoryStream<Path> stream = Files.newDirectoryStream(libsDirectory);
-                    stream.forEach(path -> {
-                        if(!Files.isDirectory(path) && path.toString().endsWith("jar"))
-                        {
-                            joiner.add(path.toString());
-                        }
-                    });
-                }
-                catch(IOException ioe)
-                {
-                    System.out.println("Error creating classpath for compile-time libraries");
-                    ioe.printStackTrace();
-                    System.exit(EXIT_CODE_IO_ERROR);
-                }
-
-                return joiner.toString();
+                DirectoryStream<Path> stream = Files.newDirectoryStream(parent);
+                stream.forEach(path -> {
+                    if(!Files.isDirectory(path) && path.toString().endsWith("jar"))
+                    {
+                        joiner.add(path.toString());
+                    }
+                });
             }
+            catch(IOException ioe)
+            {
+                System.out.println("Failed: Error creating classpath for compile-time libraries - " +
+                    ioe.getLocalizedMessage());
+                ioe.printStackTrace();
+                System.exit(EXIT_CODE_IO_ERROR);
+            }
+
+            return joiner.toString();
         }
 
         return "";
@@ -336,10 +335,9 @@ public class Creator
      */
     public static void compile(List<Path> paths, List<String> options)
     {
-        System.out.println("Compiling Source Code");
+        System.out.println("Compiling: Source Code");
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
-        System.out.println("File Manager: " + (fileManager != null ? fileManager.getClass() : " null"));
         Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromPaths(paths);
         compiler.getTask(null, fileManager, null, options, null, compilationUnits).call();
     }
@@ -361,7 +359,6 @@ public class Creator
         List<File> files = new ArrayList<>();
         DirectoryStream<Path> stream = Files.newDirectoryStream(source);
         stream.forEach(path -> {
-            System.out.println("Selecting:" + (path != null ? path.toString() : "(null path)"));
             files.add(path.toFile());
         });
         zipUtility.zip(files, output.toString());
@@ -387,9 +384,9 @@ public class Creator
     {
         try
         {
-            System.out.println("Create JMBE library - starting ....");
+            System.out.println("Starting: JMBE Library Creator");
             Path temporaryDirectory = Files.createTempDirectory("jmbe-creator");
-            System.out.println("Created Temporary Work Directory: " + temporaryDirectory.toString());
+            System.out.println("Created: Temporary Directory [" + temporaryDirectory.toString() + "]");
             Release latest = GitHub.getLatestRelease(GITHUB_JMBE_RELEASES_URL);
 
             if(latest != null)
@@ -399,65 +396,65 @@ public class Creator
                 if(libraryPath == null)
                 {
                     library = Path.of(System.getProperty("user.dir")).getParent().resolve(getJarName(latest.getVersion().toString()));
-                    System.out.println("Using Auto-Generated Library Path: " + library.toString());
+                    System.out.println("Generated: Library Path [" + library.toString() + "]");
                 }
                 else
                 {
                     library = Path.of(libraryPath);
-                    System.out.println("Using Specified Library Path: " + library.toString());
+                    System.out.println("Specified: Library Path [" + library.toString() + "]");
                 }
 
-                System.out.println("GitHub Downloading: " + latest.toString());
+                System.out.println("Downloading: Source Code [Version " + latest.getVersion().toString() + "]");
                 Path download = GitHub.downloadReleaseSourceCode(latest, temporaryDirectory);
 
                 if(download != null)
                 {
-                    System.out.println("Source Code Downloaded to: " + download.toString());
                     process(download);
-                    System.out.println("Creating JMBE Library JAR Metadata");
+                    System.out.println("Creating: JAR Metadata");
                     createJarMetadata(getOutputDirectory(temporaryDirectory), latest.getVersion().toString());
-                    System.out.println("Copying JMBE License File");
+                    System.out.println("Creating: JAR License File");
                     copyLicenseFile(temporaryDirectory);
                     Path sourceFiles = getOutputDirectory(temporaryDirectory);
                     Path zip = temporaryDirectory.resolve(getJarName(latest.getVersion().toString()));
-                    System.out.println("Zipping JMBE library to JAR: " + library.toString());
+                    System.out.println("Creating: JMBE Library [" + library.toString() + "]");
                     createJar(sourceFiles, library);
-                    System.out.println("Deleting temporary work directory: " + temporaryDirectory.toString());
+                    System.out.println("Deleting: Temporary Directory [" + temporaryDirectory.toString() + "]");
 
                     try
                     {
                         FileUtils.deleteDirectory(temporaryDirectory.toFile());
-                        System.out.println("Temporary directory deleted " + temporaryDirectory.toString());
                     }
                     catch(IOException ioe)
                     {
-                        System.out.println("Unable to delete temporary directory " + temporaryDirectory.toString());
+                        System.out.println("Delete: Temporary Directory Failed [" + temporaryDirectory.toString() + "]");
                     }
 
-                    System.out.println("JMBE Library Created At: " + library.toString());
+                    System.out.println("----------------------------------------------------------------------");
+                    System.out.println("Success: JMBE Library Created At: " + library.toString());
+                    System.out.println("----------------------------------------------------------------------\n");
                     return EXIT_CODE_SUCCESS;
                 }
                 else
                 {
-                    System.out.println("Couldn't download source code from GitHub.  Exiting.");
+                    System.out.println("Failed: Couldn't download source code from GitHub.  Exiting.");
                     return EXIT_CODE_NETWORK_ERROR;
                 }
             }
             else
             {
-                System.out.println("Unable to determine the latest JMBE release version from GitHub.");
+                System.out.println("Failed: Unable to determine the latest JMBE release version from GitHub.");
                 return EXIT_CODE_NETWORK_ERROR;
             }
         }
         catch(IOException ioe)
         {
-            System.out.println("I/O Error");
+            System.out.println("Failed: Unknown I/O Error " + ioe.getLocalizedMessage());
             ioe.printStackTrace();
             return EXIT_CODE_IO_ERROR;
         }
         catch(Exception e)
         {
-            System.out.println("Unknown Error");
+            System.out.println("Failed: Unknown (General) Error " + e.getLocalizedMessage());
             e.printStackTrace();
             return EXIT_CODE_UNKNOWN_ERROR;
         }

@@ -6,7 +6,7 @@ sourceCompatibility = 1.8
 
 subprojects {
     apply plugin: 'java'
-    version = '1.0.7'
+    version = '1.0.7a'
 }
 
 idea {
