@@ -58,21 +58,19 @@ public class GitHub
             .followRedirects(HttpClient.Redirect.ALWAYS)
             .build();
 
-        System.out.println("Downloading Source Code From: " + release.getDownloadUrl());
+        System.out.println("Downloading: " + release.getDownloadUrl());
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(release.getDownloadUrl())).build();
 
         try
         {
             HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFileDownload(directory,
                 StandardOpenOption.CREATE, StandardOpenOption.WRITE));
-            System.out.println("Download HTTP Status: " + response.statusCode());
-
+            System.out.println("Download Complete: HTTP Status " + response.statusCode());
             return response.body();
-
         }
         catch(Exception e)
         {
-            System.out.println("Error downloading source code from GitHub");
+            System.out.println("Download Failed: Error downloading source code from GitHub - " + e.getLocalizedMessage());
             e.printStackTrace();
         }
 
