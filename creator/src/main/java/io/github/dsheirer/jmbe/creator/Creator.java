@@ -22,6 +22,8 @@ package io.github.dsheirer.jmbe.creator;
 import io.github.dsheirer.jmbe.creator.github.GitHub;
 import io.github.dsheirer.jmbe.creator.github.Release;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -29,6 +31,7 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,6 +50,8 @@ import java.util.zip.ZipFile;
  */
 public class Creator
 {
+    private final static Logger mLog = LoggerFactory.getLogger(GitHub.class);
+
     private final static String GITHUB_JMBE_RELEASES_URL = "https://api.github.com/repos/dsheirer/jmbe/releases";
 
     /**
@@ -82,6 +87,7 @@ public class Creator
 
     /**
      * Process a downloaded source code file
+     *
      * @param downloadFile containing a GitHub JMBE release artifact
      * @throws IOException if there is an error
      */
@@ -143,6 +149,7 @@ public class Creator
 
     /**
      * Creates JAR metadata directory and manifest file
+     *
      * @param outputDirectory for writing files
      * @param version string for the library
      * @throws IOException if there is an error
@@ -167,6 +174,7 @@ public class Creator
 
     /**
      * Discovers the LICENSE file from the source code tree and copies it to the output directory
+     *
      * @param downloadDirectory where source code exists
      * @throws IOException if there is an error
      */
@@ -184,6 +192,7 @@ public class Creator
 
     /**
      * Recursively finds the specified filename in the specified directory
+     *
      * @param downloadDirectory to search
      * @param fileName to discover
      * @return discovered file path or null
@@ -224,6 +233,7 @@ public class Creator
 
     /**
      * Output directory for storing compiled classes and JAR artifacts
+     *
      * @param downloadDirectory where source code was downloaded
      * @return output directory
      */
@@ -234,6 +244,7 @@ public class Creator
 
     /**
      * Creates compiler options for classpath and output directory
+     *
      * @param downloadDirectory where source code is located
      * @return options
      */
@@ -252,6 +263,7 @@ public class Creator
 
     /**
      * Deletes the compiled interface classes from the output directory
+     *
      * @param output
      * @throws IOException
      */
@@ -280,6 +292,7 @@ public class Creator
 
     /**
      * Indicates if the zip entry is a compilable file for the codec or interface java classes
+     *
      * @param zipEntry to inspect
      * @return true if the file is part of the interfaces or codec package and is a java file.
      */
@@ -291,15 +304,28 @@ public class Creator
 
     /**
      * Creates a command line classpath of the dependent jar libraries
+     *
      * @return concatenated string suitable for -d command line option
      */
     public static String getLibraryClassPath()
     {
-        Path currentPath = Path.of(Creator.class.getProtectionDomain().getCodeSource().getLocation().getPath());
-        System.out.println("Discovering: Current Location [" + currentPath.toString() + "]");
+        URL currentURL = Creator.class.getProtectionDomain().getCodeSource().getLocation();
+        System.out.println("Current URL:" + currentURL.toString());
+        Path currentPath = null;
 
-        if(Files.exists(currentPath))
+        try
         {
+            currentPath = new File(currentURL.toURI()).toPath();
+        }
+        catch(Exception e)
+        {
+            mLog.error("Error discovering current execution path to lookup compile dependencies", e);
+            currentPath = null;
+        }
+
+        if(currentPath != null && Files.exists(currentPath))
+        {
+            System.out.println("Discovering: Current Location [" + currentPath.toString() + "]");
             Path parent = currentPath.getParent();
             System.out.println("Discovering: Compile Dependencies [" + parent.toString() + "]");
             StringJoiner joiner = new StringJoiner(String.valueOf(File.pathSeparatorChar));
@@ -330,6 +356,7 @@ public class Creator
 
     /**
      * Compiles the list of java source code files using the specified compile time options
+     *
      * @param paths of source code files
      * @param options for compilation (classpath & output directory)
      */
@@ -344,6 +371,7 @@ public class Creator
 
     /**
      * Creates a jar from the specified source directory, storing the jar at the specified output file name
+     *
      * @param source directory containing compiled classes and other jar artifacts
      * @param output library file path and name
      * @throws IOException if there is an error
@@ -366,6 +394,7 @@ public class Creator
 
     /**
      * Creates a jar name for the specified release version
+     *
      * @param version of the GitHub JMBE release
      * @return JMBE library jar name
      */
@@ -377,6 +406,7 @@ public class Creator
 
     /**
      * Creates a JMBE library jar file from the lastest available source code.
+     *
      * @param libraryPath for the final library
      * @return an exit code to indicate success or failure
      */
