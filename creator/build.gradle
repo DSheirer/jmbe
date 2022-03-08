@@ -36,39 +36,39 @@ jar {
  */
 runtime {
     targetPlatform("linux-arm32-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-linux-arm32-vfp-hflt.tar.gz")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-linux-arm32-vfp-hflt.tar.gz")
     }
 
     targetPlatform("linux-aarch64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-linux-aarch64.tar.gz")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-linux-aarch64.tar.gz")
     }
 
     targetPlatform("linux-x86_32-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-linux-i586.tar.gz")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-linux-i586.tar.gz")
     }
 
     targetPlatform("linux-x86_64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-linux-amd64.tar.gz")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-linux-amd64.tar.gz")
     }
 
     targetPlatform("osx-x86_64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-macos-amd64.tar.gz")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-macos-amd64.tar.gz")
     }
 
     targetPlatform("osx-aarch64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-macos-aarch64.tar.gz")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-macos-aarch64.tar.gz")
     }
 
     targetPlatform("windows-aarch64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-windows-aarch64.zip")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-windows-aarch64.zip")
     }
 
     targetPlatform("windows-x86_64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-windows-amd64.zip")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-windows-amd64.zip")
     }
 
     targetPlatform("windows-x86_32-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/17.0.2+9/bellsoft-jdk17.0.2+9-windows-i586.zip")
+        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-windows-i586.zip")
     }
 
     modules = ['jdk.crypto.ec','java.desktop','jdk.compiler','java.base','jdk.zipfs']
