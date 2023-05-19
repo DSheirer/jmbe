@@ -69,7 +69,7 @@ public class AMBEAudioCodec implements IAudioCodec
     public IAudioWithMetadata getAudioWithMetadata(byte[] frameData)
     {
         AMBEFrame frame = new AMBEFrame(frameData);
-        AudioWithMetadata audioWithMetadata = AudioWithMetadata.create(getAudio(frameData));
+        AudioWithMetadata audioWithMetadata = AudioWithMetadata.create(getAudio(frame));
 
         if(frame.getFrameType() == FrameType.TONE)
         {
