@@ -1,0 +1,371 @@
+/*
+ * ******************************************************************************
+ * Copyright (C) 2015-2026 Dennis Sheirer
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * *****************************************************************************
+ */
+
+package thumbdv;
+
+import com.fazecast.jSerialComm.SerialPort;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import thumbdv.message.AmbeMessage;
+import thumbdv.message.request.AmbeRequest;
+import thumbdv.message.request.DecodeAmbeRequest;
+import thumbdv.message.request.FlushRequest;
+import thumbdv.message.request.GetConfigRequest;
+import thumbdv.message.request.ProductIdRequest;
+import thumbdv.message.request.ResetWithConfigRequest;
+import thumbdv.message.request.SetSpeechFormatRequest;
+import thumbdv.message.request.SetVocoderParametersRequest;
+import thumbdv.message.request.VersionRequest;
+import thumbdv.message.response.AmbeResponse;
+import thumbdv.message.response.DecodeSpeechResponse;
+import thumbdv.message.type.InterfaceConfiguration;
+import thumbdv.message.type.VocoderRate;
+import thumbdv.util.Utils;
+import thumbdv.util.WaveUtils;
+
+/**
+ * Northwest Digital Radio (NWDR) ThumbDv dongle.
+ *
+ * Use an internal thread to communicate with the device asynchronously.  Each request returns a Future that is used to
+ * access the response once it is ready.  The queue is bound to a max of 25 requests.  Once/if you fill the queue,
+ * submitted requests are immediately returned with a queue full error.  The device will not process encode or decode
+ * requests any faster than 20 milliseconds per frame.
+ *
+ * Note: this device is very sensitive to available USB port power.  I spent a lot of time trying to diagnose why it
+ * would respond to an AMBE to PCM decode request with a 'Device Ready' (0x39) response each time.  Once I moved the
+ * ThumbDV to a port directly on the workstation, it started to respond as expected.
+ *
+ * Note: linux users must allow access to the serial port:
+ *
+ * sudo usermod -a -G uucp username
+ * sudo usermod -a -G dialout username
+ * sudo usermod -a -G lock username
+ * sudo usermod -a -G tty username
+ *
+ * Note: FTDI chip serial port latency defaults to 16 ms.  On Linux, issue the following to change to 1 ms:
+ * sudo sh -c 'echo 1 > /sys/bus/usb-serial/devices/ttyUSB0/latency_timer'
+ * See: https://github.com/DVSwitch/AMBEServer/blob/main/AMBEtest5.md
+ *
+ * If having problems with FTDI UART not resetting, issue hardware reset.  Use lsusb to find bus/port, then:
+ * echo 0 | sudo tee /sys/bus/usb/devices/1-3/authorized
+ * echo 1 | sudo tee /sys/bus/usb/devices/1-3/authorized
+ */
+public class ThumbDv implements AutoCloseable
+{
+    private final static Logger LOG = LoggerFactory.getLogger(ThumbDv.class);
+    private static final String PORT_DESCRIPTION = "USB-to-Serial Port (ftdi_sio)";
+    private static final String PORT_DESCRIPTION_LINUX = "ttyUSB0";
+    private static final String PORT_DESCRIPTION_WINDOWS = "COM3";
+
+    public enum AudioProtocol
+    {
+        DMR,
+        DSTAR,
+        NXDN,
+        P25_PHASE2,
+    }
+
+    private AudioProtocol mAudioProtocol;
+    private SerialCommunicationManager mCommunicationManager;
+
+    /**
+     * Constructs an instance
+     */
+    public ThumbDv()
+    {
+    }
+
+    /**
+     * Opens the device and configures for the specified audio protocol.  Note: this is incomplete and doesn't yet
+     * support DSTAR.
+     * @param audioProtocol
+     */
+    public void open(AudioProtocol audioProtocol)
+    {
+        open();
+
+        AmbeRequest request;
+        AmbeResponse response;
+
+        try
+        {
+            response = send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
+            LOG.info("Power-On Config: " + response);
+
+            //Note: configure additional features of the AMBE-3000R with this request message, or use the defaults.
+//            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, VocoderRate.RATE_33);
+//            response = send(request).get(2, TimeUnit.SECONDS);
+//            LOG.info("Set Soft Config - Response: " + response);
+
+            if(audioProtocol.equals(AudioProtocol.DSTAR))
+            {
+                request = new SetVocoderParametersRequest(0x0130, 0x0763, 0x4000, 0x0000, 0x0000, 0x0048); //DMR
+            }
+            else
+            {
+                request = new SetVocoderParametersRequest(0x0431, 0x0754, 0x2400, 0x0000, 0x0000, 0x6F48); //DMR
+            }
+
+            response = send(request).get(2, TimeUnit.SECONDS);
+            LOG.info("Set Vocoder Parameters - Response: " + response);
+
+            response = send(new SetSpeechFormatRequest()).get(2, TimeUnit.SECONDS);
+            LOG.info("Set Speech Format - Response: " + response);
+
+            //Confirm that the settings take effect ...
+            response = send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
+            LOG.info("Verify Soft Config: " + response);
+        }
+        catch(Exception e)
+        {
+            LOG.error("Unable to open and configure the device", e);
+            close();
+        }
+    }
+
+    /**
+     * Decodes the list of AMBE frames.
+     * @param ambeFrames to decode
+     * @param audioProtocol for the ambe frames
+     * @return list of decoded audio byte arrays of 16-bit signed samples each
+     */
+    public static List<byte[]> decode(List<byte[]> ambeFrames, AudioProtocol audioProtocol)
+    {
+        List<byte[]> audio = new ArrayList<>();
+
+        try(ThumbDv thumbDv = new ThumbDv())
+        {
+            thumbDv.open(audioProtocol);
+
+            List<Future<AmbeResponse>> futures = new ArrayList<>();
+
+            for(byte[] ambeFrame: ambeFrames)
+            {
+                Utils.sleepQuietly(20);
+                futures.add(thumbDv.send(new DecodeAmbeRequest(ambeFrame)));
+            }
+
+            LOG.info("Sending flush request ");
+
+            thumbDv.send(new FlushRequest());
+
+            LOG.info("Submitted: " + futures.size() + " decode frame requests");
+            AmbeResponse response;
+
+            int counter = 0;
+            for(Future<AmbeResponse> future : futures)
+            {
+                try
+                {
+                    response = future.get(1, TimeUnit.SECONDS);
+
+                    if(response instanceof DecodeSpeechResponse dsr)
+                    {
+                        audio.add(dsr.getAudioPayload());
+                        LOG.info("Processed decode response " + ++counter + "/" + futures.size());
+                        LOG.info("Packet: " + dsr);
+                    }
+                }
+                catch(Exception e)
+                {
+                    LOG.error("Aborted timeout wait: " + e.getMessage());
+                }
+            }
+
+            LOG.info("Finished processing the decode requests");
+        }
+
+        return audio;
+    }
+
+    /**
+     * Opens and configures the ThumbDV to support encoding and decoding audio frames for the audio protocol.
+     */
+    public void open()
+    {
+        if(mCommunicationManager == null)
+        {
+            LOG.info("Starting");
+
+            SerialPort[] ports = SerialPort.getCommPorts();
+            LOG.info("Discovered [" + ports.length + "] serial ports");
+            SerialPort thumbDVPort = null;
+
+            for(SerialPort port : ports)
+            {
+                if(port.getDescriptivePortName().contentEquals(PORT_DESCRIPTION) ||
+                        port.getSystemPortName().contains(PORT_DESCRIPTION_LINUX) ||
+                        port.getSystemPortName().contentEquals(PORT_DESCRIPTION_WINDOWS))
+                {
+                    thumbDVPort = port;
+                    LOG.info("Selected Serial Port: " + port.getSystemPortName() + " - " + port.getDescriptivePortName());
+                }
+                else
+                {
+                    LOG.info("Available Serial Port: " + port.getSystemPortName() + " - " + port.getDescriptivePortName());
+                }
+            }
+
+            if(thumbDVPort != null)
+            {
+                mCommunicationManager = new SerialCommunicationManager(thumbDVPort);
+
+                try
+                {
+                    mCommunicationManager.open();
+                    AmbeResponse response;
+                    response = send(new ProductIdRequest()).get(2, TimeUnit.SECONDS);
+                    LOG.info("Product ID: " + response);
+                    response = send(new VersionRequest()).get(2, TimeUnit.SECONDS);
+                    LOG.info("   Version: " + response);
+                }
+                catch(Exception e)
+                {
+                    LOG.error("Error opening serial port and resetting device", e);
+                }
+            }
+        }
+    }
+
+    public void close()
+    {
+        if(mCommunicationManager != null)
+        {
+            mCommunicationManager.close();
+            mCommunicationManager = null;
+        }
+    }
+
+    /**
+     * Sends the AMBE request message
+     *
+     * @param request message
+     */
+    public Future<AmbeResponse> send(AmbeRequest request)
+    {
+        if(mCommunicationManager != null)
+        {
+            return mCommunicationManager.send(request);
+        }
+
+        return CompletableFuture.failedFuture(new IllegalStateException("ThumbDV not available"));
+    }
+
+    public static void main(String[] args)
+    {
+        LOG.info("Starting");
+
+        ThumbDv thumbDv = new ThumbDv();
+
+        try
+        {
+            thumbDv.open();
+            AmbeRequest request;
+            AmbeResponse response;
+
+            response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
+            LOG.info("Power-On Config: " + response);
+
+            //Note: configure additional features of the AMBE-3000R with this request message, or use the defaults.
+            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, VocoderRate.RATE_33);
+            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
+            LOG.info("Set Soft Config - Response: " + response);
+
+            //Confirm that the settings take effect ...
+            response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
+            LOG.info("Verify Soft Config: " + response);
+
+//            response = thumbDv.send(new SetPacketModeRequest()).get(2, TimeUnit.SECONDS);
+//            LOG.info("Set Packet Mode: " + response);
+
+            String[] frames = {"0E46122323067C60F8", "0E469433C1067CF1BC", "0E46122B23067C60F8", "0E67162BE08874E2B4",
+                    "0E46163BE1067CF1BC", "0E46122B23067C60F8", "0A06163BE00A5C303E", "0E46122B23067C60F8", "0E46163BE1847CE1FC",
+                    "0E46122B23067C60F8"};
+
+            List<byte[]> frameData = new ArrayList<>();
+
+            for(String frame : frames)
+            {
+                byte[] bytes = new byte[frame.length() / 2];
+                for(int x = 0; x < frame.length(); x += 2)
+                {
+                    String hex = frame.substring(x, x + 2);
+                    bytes[x / 2] = (byte) (0xFF & Integer.parseInt(hex, 16));
+                }
+
+                frameData.add(bytes);
+            }
+
+            List<byte[]> ambeFrames = new ArrayList<>();
+
+            List<Future<AmbeResponse>> futures = new ArrayList<>();
+
+            for(byte[] ambeFrame: frameData)
+            {
+                request = new DecodeAmbeRequest(ambeFrame);
+                LOG.info("Decode Request: " + AmbeMessage.toHex(request.getData()));
+                Utils.sleepQuietly(20);
+                futures.add(thumbDv.send(new DecodeAmbeRequest(ambeFrame)));
+            }
+
+            LOG.info("Sending flush request ");
+
+            thumbDv.send(new FlushRequest());
+
+            List<byte[]> audio = new ArrayList<>();
+
+            for(Future<AmbeResponse> future : futures)
+            {
+                try
+                {
+                    response = future.get(5, TimeUnit.SECONDS);
+
+                    if(response instanceof DecodeSpeechResponse dsr)
+                    {
+                        audio.add(dsr.getAudioPayload());
+                    }
+                    LOG.info("Decode Response: " + response + "\n");
+                }
+                catch(Exception e)
+                {
+                    LOG.error("Aborted timeout wait: " + e.getMessage());
+                }
+            }
+
+            LOG.info("Writing wave file ...");
+            WaveUtils.writeBE(audio, Path.of("/run/media/denny/T9/AMBE3000R and ThumbDV/audio.wav"));
+            LOG.info("Finished!");
+
+            thumbDv.close();
+
+        }
+        catch(Exception e)
+        {
+            LOG.error("Error configuring audio protocol", e);
+        }
+
+        LOG.info("Finished!");
+    }
+}

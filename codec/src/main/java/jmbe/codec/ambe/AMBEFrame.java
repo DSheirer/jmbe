@@ -21,6 +21,9 @@ package jmbe.codec.ambe;
 
 import jmbe.binary.BinaryFrame;
 import jmbe.codec.FrameType;
+import jmbe.codec.ambe.ambePlus2.FundamentalFrequency;
+import jmbe.codec.ambe.tone.Tone;
+import jmbe.codec.ambe.tone.ToneParameters;
 import jmbe.edac.Golay23;
 import jmbe.edac.Golay24;
 import org.slf4j.Logger;
@@ -72,7 +75,7 @@ public class AMBEFrame
     private static final int U3_TONE_FRAME_VALUE = 0;
 
     private BinaryFrame mFrame;
-    private AMBEFundamentalFrequency mFundamentalFrequency;
+    private FundamentalFrequency mFundamentalFrequency;
     private FrameType mFrameType;
     private int[] mErrors = new int[2];
     private Tone mTone;
@@ -125,7 +128,7 @@ public class AMBEFrame
         int b0 = (vectorC0.getInt(VECTOR_U0_B0_HIGH) << 3) + vectorC3.getInt(VECTOR_U3_B0_LOW);
         int errorCount = mErrors[0] + mErrors[1];
 
-        mFundamentalFrequency = AMBEFundamentalFrequency.fromValue(b0);
+        mFundamentalFrequency = FundamentalFrequency.fromValue(b0);
 
         //Process as either a tone frame or a voice frame.
         if(errorCount < 6 &&
@@ -144,7 +147,7 @@ public class AMBEFrame
             // frequency to W120 (erasure) which will cause a frame repeat sequence.
             if(mFrameType == FrameType.TONE)
             {
-                mFundamentalFrequency = AMBEFundamentalFrequency.W120;
+                mFundamentalFrequency = FundamentalFrequency.W120;
                 mFrameType = mFundamentalFrequency.getFrameType();
             }
 
@@ -168,6 +171,11 @@ public class AMBEFrame
         }
     }
 
+    public int[] getB()
+    {
+        return mB;
+    }
+
     /**
      * Frame type for this frame
      */
@@ -179,7 +187,7 @@ public class AMBEFrame
     /**
      * Fundamental frequency enumeration entry
      */
-    public AMBEFundamentalFrequency getFundamentalFrequency()
+    public FundamentalFrequency getFundamentalFrequency()
     {
         return mFundamentalFrequency;
     }

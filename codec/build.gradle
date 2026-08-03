@@ -7,17 +7,19 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.slf4j:slf4j-api:1.7.25'
-    implementation 'org.slf4j:slf4j-simple:1.7.25'
+    implementation 'org.slf4j:slf4j-api:2.0.18'
+    implementation 'org.slf4j:slf4j-simple:2.0.18'
     implementation 'com.github.wendykierp:JTransforms:3.1'
     implementation 'pl.edu.icm:JLargeArrays:1.6'
     implementation project(':api')
     testImplementation group: 'junit', name: 'junit', version: '4.12'
 }
 
-archivesBaseName = 'jmbe'
 
 jar {
+//    archivesBaseName = 'jmbe'
+
+    archiveBaseName = 'jmbe'
     manifest {
         attributes('Implementation-Title': rootProject.name,
                 'Version': project.version,

@@ -31,6 +31,9 @@ public abstract class MBEModelParameters
     private float[] mLog2SpectralAmplitudes;
     protected float[] mSpectralAmplitudes;
     protected float[] mEnhancedSpectralAmplitudes;
+    protected float[] mWeightOriginal;
+    protected float[] mWeightEnhanced;
+    protected float[] mWeightScaled;
     private float mErrorRate;
     private int mErrorCount;
     private int mErrorCount4;
@@ -168,6 +171,21 @@ public abstract class MBEModelParameters
     protected void setEnhancedSpectralAmplitudes(float[] enhancedSpectralAmplitudes)
     {
         mEnhancedSpectralAmplitudes = enhancedSpectralAmplitudes;
+    }
+
+    public float[] getWeightOriginal()
+    {
+        return mWeightOriginal;
+    }
+
+    public float[] getWeightEnhanced()
+    {
+        return mWeightEnhanced;
+    }
+
+    public float[] getWeightScaled()
+    {
+        return mWeightScaled;
     }
 
     /**
@@ -324,9 +342,19 @@ public abstract class MBEModelParameters
 
         for(int l = 1; l <= L; l++)
         {
-            float amplitudesSquared = spectralAmplitudes[l] * spectralAmplitudes[l];
+            float amplitudesSquared = (float)Math.pow(spectralAmplitudes[l], 2);
+
+            /**
+             * Calculates the power spectrum or energy density of each frequency bin.
+             */
             RM[0] += amplitudesSquared;
-            RM[1] += (amplitudesSquared * Math.cos(getFundamentalFrequency() * (float)l));
+
+            /**
+             * Google says: this calculates the phase-weighted power spectrum of each frequency bin.  This produces the
+             * net power contributed by components that are in-phase (0 degrees) versus out-of-phase (180 degrees),
+             * relative to a pure cosine reference baseline at the start of the sample window.
+             */
+            RM[1] += (amplitudesSquared * Math.cos(getFundamentalFrequency() * l));
         }
 
         float[] W = new float[L + 1];
@@ -345,59 +373,66 @@ public abstract class MBEModelParameters
         /* Algorithm #107 - calculate enhancement weights (W) */
         for(int l = 1; l <= getL(); l++)
         {
+            //Note: The 2003 ICD has "0.96 * PI" and the 2014 version only has "0.96".
             float temp = (PI_96 * (rm0squared + rm1squared -
-                (2.0f * RM[0] * RM[1] * (float)Math.cos(getFundamentalFrequency() * (float)l)))) /
-                (getFundamentalFrequency() * RM[0] * (rm0squared - rm1squared));
+                    (2.0f * RM[0] * RM[1] * (float)Math.cos(getFundamentalFrequency() * l)))) /
+                    (getFundamentalFrequency() * RM[0] * (rm0squared - rm1squared));
             W[l] = (float)(Math.sqrt(spectralAmplitudes[l]) * Math.pow(temp, 0.25));
         }
+
+        mWeightOriginal = new float[enhancedSpectralAmplitudes.length];
+        mWeightEnhanced = new float[enhancedSpectralAmplitudes.length];
+        mWeightScaled = new float[enhancedSpectralAmplitudes.length];
 
         /* Algorithm #108 - apply weights to produce enhanced amplitudes */
         for(int l = 1; l <= L; l++)
         {
+            mWeightOriginal[l] = W[l];
+
             if((8 * l) <= L)
             {
                 enhancedSpectralAmplitudes[l] = spectralAmplitudes[l];
+                mWeightEnhanced[l] = 1.0f;
             }
             else if(W[l] > 1.2f)
             {
                 enhancedSpectralAmplitudes[l] = spectralAmplitudes[l] * 1.2f;
+                mWeightEnhanced[l] = 1.2f;
             }
             else if(W[l] < 0.5f)
             {
                 enhancedSpectralAmplitudes[l] = spectralAmplitudes[l] * 0.5f;
+                mWeightEnhanced[l] = 0.5f;
             }
             else
             {
                 enhancedSpectralAmplitudes[l] = spectralAmplitudes[l] * W[l];
+                mWeightEnhanced[l] = W[l];
             }
         }
 
         /* Algorithm #109 - remove energy differential of enhanced amplitudes */
-        float denominator = 0.0f;
+        double denominator = 0.0f;
 
         for(int l = 1; l <= L; l++)
         {
-            denominator += (enhancedSpectralAmplitudes[l] * enhancedSpectralAmplitudes[l]);
+            denominator += Math.pow(enhancedSpectralAmplitudes[l], 2);
         }
 
-        float y = (float)Math.sqrt(RM[0] / denominator);
+        float y = (float)(Math.pow(RM[0] / denominator, 0.5));
 
         /* Algorithm #110 - scale enhanced amplitudes to remove energy differential */
         for(int l = 1; l <= L; l++)
         {
             enhancedSpectralAmplitudes[l] *= y;
+            mWeightScaled[l] = mWeightEnhanced[l] * y;
         }
 
         /* Algorithm #111 - calculate local energy */
         mLocalEnergy = (0.95f * previousLocalEnergy) + (0.05f * RM[0]);
-
-        if(mLocalEnergy < 10000.0f)
-        {
-            mLocalEnergy = 10000.0f;
-        }
+        mLocalEnergy = Math.max(mLocalEnergy, 10000.0f);
 
         setEnhancedSpectralAmplitudes(enhancedSpectralAmplitudes);
-
         applyAdaptiveSmoothing(previousAmplitudeThreshold);
     }
 
@@ -405,20 +440,15 @@ public abstract class MBEModelParameters
      * Performs adaptive smoothing on enhanced spectral amplitudes and the voice/no-voice decisions when error rate
      * is above a certain threshold that could cause audio distortions or discontinuities between successive frames
      */
-    private void applyAdaptiveSmoothing(int previousAmplitudeThresholdTM)
+    private void applyAdaptiveSmoothing(int previousAmplitudeThresholdTm)
     {
-        float VM;
-
         float[] enhancedSpectralAmplitudes = getEnhancedSpectralAmplitudes();
 
         /* Algorithm #112 - calculate adaptive threshold */
-        if(getErrorRate() <= 0.005 && getErrorCountTotal() <= 4)
-        {
-            VM = Float.MAX_VALUE;
-        }
-        else
+        if(!(getErrorRate() <= 0.005 && getErrorCountTotal() <= 4))
         {
             float energy = (float)Math.pow(getLocalEnergy(), 0.375f);
+            float VM;
 
             if(getErrorRate() <= 0.0125f && getErrorCount4() == 0)
             {
@@ -437,7 +467,7 @@ public abstract class MBEModelParameters
                 float amplitude = enhancedSpectralAmplitudes[l];
 
                 /* Algorithm #113 - apply adaptive threshold to voice/no voice decisions */
-                voicingDecisions[l] = ((amplitude > VM) ? true : voicingDecisions[l]);
+                voicingDecisions[l] = (amplitude > VM || voicingDecisions[l]);
             }
 
             setVoicingDecisions(voicingDecisions);
@@ -451,7 +481,7 @@ public abstract class MBEModelParameters
             Am += enhancedSpectralAmplitudes[l];
         }
 
-        int Tm = 0;
+        int Tm;
 
         /* Algorithm #115 - calculate amplitude threshold */
         if(getErrorRate() <= 0.005 && getErrorCountTotal() <= 6)
@@ -460,13 +490,13 @@ public abstract class MBEModelParameters
         }
         else
         {
-            Tm = (6000 - (300 * getErrorCountTotal()) + previousAmplitudeThresholdTM);
+            Tm = (6000 - (300 * getErrorCountTotal()) + previousAmplitudeThresholdTm);
         }
 
         setAmplitudeThreshold(Tm);
 
         //Algorithm #116 - scale enhanced spectral amplitudes if amplitude measure is greater than amplitude threshold
-        if(Am > Tm)
+        if(Tm < Am)
         {
             float scale = (float)Tm / Am;
 

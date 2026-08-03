@@ -22,6 +22,12 @@ package jmbe.codec;
 public interface IFundamentalFrequency
 {
     /**
+     * Name of the enumeration entry
+     * @return
+     */
+    String getName();
+
+    /**
      * Fundamental frequency value
      * @return frequency in range 0.0 <> 0.5</>
      */

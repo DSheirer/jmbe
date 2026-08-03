@@ -1,6 +1,6 @@
 /*
  * ******************************************************************************
- * Copyright (C) 2015-2019 Dennis Sheirer
+ * Copyright (C) 2015-2026 Dennis Sheirer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ package jmbe.codec.ambe;
 
 import jmbe.audio.AudioWithMetadata;
 import jmbe.codec.FrameType;
+import jmbe.codec.ambe.tone.Tone;
 import jmbe.iface.IAudioCodec;
 import jmbe.iface.IAudioWithMetadata;
 import org.slf4j.Logger;
@@ -34,7 +35,7 @@ public class AMBEAudioCodec implements IAudioCodec
     private final static Logger mLog = LoggerFactory.getLogger(AMBEAudioCodec.class);
 
     public static final String CODEC_NAME = "AMBE 3600 x 2450";
-    private AMBESynthesizer mSynthesizer = new AMBESynthesizer();
+    protected final AMBESynthesizer mSynthesizer = new AMBESynthesizer();
 
     public AMBEAudioCodec()
     {

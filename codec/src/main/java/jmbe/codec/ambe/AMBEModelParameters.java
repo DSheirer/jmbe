@@ -21,6 +21,16 @@ package jmbe.codec.ambe;
 
 import jmbe.codec.FrameType;
 import jmbe.codec.MBEModelParameters;
+import jmbe.codec.ambe.ambePlus2.FundamentalFrequency;
+import jmbe.codec.ambe.ambePlus2.VoicingDecision;
+import jmbe.codec.ambe.ambePlus2.DifferentialGain;
+import jmbe.codec.ambe.ambePlus2.HOCB5;
+import jmbe.codec.ambe.ambePlus2.HOCB6;
+import jmbe.codec.ambe.ambePlus2.HOCB7;
+import jmbe.codec.ambe.ambePlus2.HOCB8;
+import jmbe.codec.ambe.ambePlus2.LMPRBlockLength;
+import jmbe.codec.ambe.ambePlus2.PRBA24;
+import jmbe.codec.ambe.ambePlus2.PRBA58;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,14 +51,14 @@ public class AMBEModelParameters extends MBEModelParameters
      */
     public AMBEModelParameters()
     {
-        super(AMBEFundamentalFrequency.W124);
+        super(FundamentalFrequency.W124);
         setDefaults(FrameType.VOICE);
     }
 
     /**
      * Constructs model parameters for frame type VOICE or SILENCE
      */
-    public AMBEModelParameters(AMBEFundamentalFrequency fundamental, int[] b, int[] errors, AMBEModelParameters previous)
+    public AMBEModelParameters(FundamentalFrequency fundamental, int[] b, int[] errors, AMBEModelParameters previous)
     {
         super(fundamental);
 
@@ -117,9 +127,9 @@ public class AMBEModelParameters extends MBEModelParameters
      * AMBE fundamental frequency enumeration value
      * @return fundamental frequency
      */
-    public AMBEFundamentalFrequency getAMBEFundamentalFrequency()
+    public FundamentalFrequency getAMBEFundamentalFrequency()
     {
-        return (AMBEFundamentalFrequency)getMBEFundamentalFrequency();
+        return (FundamentalFrequency)getMBEFundamentalFrequency();
     }
 
     /**
@@ -145,7 +155,7 @@ public class AMBEModelParameters extends MBEModelParameters
      */
     private void setVoicingDecisions(int b1)
     {
-        AMBEVoicingDecision voicingDecision = AMBEVoicingDecision.fromValue(b1);
+        VoicingDecision voicingDecision = VoicingDecision.fromValue(b1);
 
         boolean[] voicingDecisions = new boolean[getL() + 1];
 
@@ -219,11 +229,11 @@ public class AMBEModelParameters extends MBEModelParameters
 
             for(int m = 2; m <= 8; m++)
             {
-                R[i] += (2.0 * G[m] * (float)Math.cos(((float)Math.PI * (float)(m - 1) * ((float)i - 0.5f)) / 8.0f));
+                R[i] += (2.0f * G[m] * (float)Math.cos(((float)Math.PI * (float)(m - 1) * ((float)i - 0.5f)) / 8.0f));
             }
         }
 
-        float C[][] = new float[5][18];
+        float[][] C = new float[5][18];
 
         //Alg 29,31,33,35
         C[1][1] = 0.5f * (R[1] + R[2]);

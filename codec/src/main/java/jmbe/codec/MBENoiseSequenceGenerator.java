@@ -21,20 +21,28 @@ package jmbe.codec;
 
 import java.util.Arrays;
 
+/**
+ * Implements the unvoiced white noise generator in TIA 102-BABA algorithm 117.
+ */
 public class MBENoiseSequenceGenerator
 {
-    private float mSample = 3147;
-    private float[] mCurrentBuffer = new float[256];
+    private float mNextSample = 3147;
+    private final float[] mCurrentBuffer = new float[256];
 
+    /**
+     * Constructs an instance and preloads the buffer with samples.
+     */
     public MBENoiseSequenceGenerator()
     {
-    }
+        //Preload the buffer with samples
+        float next = mNextSample;
+        for(int x = 0; x < mCurrentBuffer.length; x++)
+        {
+            mCurrentBuffer[x] = next;
+            next = ((171.0f * next) + 11213.0f) % 53125;
+        }
 
-    public float next()
-    {
-        float next = mSample;
-        mSample = ((171.0f * next) + 11213.0f) % 53125;
-        return next;
+        mNextSample = next;
     }
 
     /**
@@ -47,11 +55,15 @@ public class MBENoiseSequenceGenerator
         //Shift the end 96 samples to the beginning so that we can generate 160 new samples
         System.arraycopy(mCurrentBuffer, 160, mCurrentBuffer, 0, 96);
 
+        float next = mNextSample;
+
         for(int x = 96; x < 256; x++)
         {
-            mCurrentBuffer[x] = next();
+            mCurrentBuffer[x] = next;
+            next = ((171.0f * next) + 11213.0f) % 53125;
         }
 
+        mNextSample = next;
         return copy;
     }
 }
