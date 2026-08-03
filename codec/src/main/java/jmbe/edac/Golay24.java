@@ -79,7 +79,6 @@ public class Golay24
             if(parityError)
             {
                 message.flip(startIndex + 23);
-//                message.incrementCorrectedBitCount(1);
                 return 1;
             }
 
@@ -133,6 +132,21 @@ public class Golay24
                         if(Integer.bitCount(original ^ corrected) > 3)
                         {
                             return 4;
+                        }
+
+                        //Extended Golay: the overall parity bit must agree with the corrected 23 bits. If it does not,
+                        //the parity bit is a further error; with 3 bits already corrected that is 4 errors, which
+                        //the code detects but cannot correct (otherwise 4 errors in the first 23 bits would be
+                        //"corrected" to a wrong codeword).
+                        if((message.getSubMessage(startIndex, startIndex + 24).cardinality() % 2) != 0)
+                        {
+                            if(errors >= 3)
+                            {
+                                return 4;
+                            }
+
+                            message.flip(startIndex + 23);
+                            errors++;
                         }
 
                         return errors;
