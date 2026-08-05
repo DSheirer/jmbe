@@ -19,25 +19,36 @@
 
 package jmbe;
 
-import javafx.application.Application;
-import javafx.scene.Scene;
-import javafx.stage.Stage;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.file.Path;
 
 /**
- * User interface audio
+ * Reader for MBE call sequence recordings
  */
-public class JmbeFX extends Application {
+public class MBECallSequenceReader
+{
+    private static final Logger LOG = LoggerFactory.getLogger(MBECallSequenceReader.class);
 
-    public static void main(String[] args) {
-        launch(args);
-    }
-
-    @Override
-    public void start(Stage primaryStage)
+    /**
+     * Loads the MBE Sequence from the file path
+     * @param path for the sequence file.
+     * @return loaded sequence or null.
+     */
+    public static MBECallSequence load(Path path)
     {
-        primaryStage.setTitle("MBE Viewer");
-        Scene scene = new Scene(new MBEViewer(), 800, 400);
-        primaryStage.setScene(scene);
-        primaryStage.show();
+        try
+        {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(path.toFile(), MBECallSequence.class);        }
+        catch (IOException e)
+        {
+            LOG.error("Error loading file [" + path + "]", e);
+        }
+
+        return null;
     }
 }
