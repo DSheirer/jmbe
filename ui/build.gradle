@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+}
+
+group = 'jmbe'
+version = 'unspecified'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':codec')
+    implementation 'ch.qos.logback:logback-classic:1.5.38'
+    implementation 'ch.qos.logback:logback-core:1.5.38'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.22.1'
+    implementation 'org.slf4j:slf4j-api:2.0.17'
+
+    testImplementation platform('org.junit:junit-bom:6.0.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}

@@ -26,7 +26,7 @@ import javafx.stage.Stage;
 /**
  * User interface audio
  */
-public class JmbeFX extends Application {
+public class MbeFx extends Application {
 
     public static void main(String[] args) {
         launch(args);
@@ -36,7 +36,7 @@ public class JmbeFX extends Application {
     public void start(Stage primaryStage)
     {
         primaryStage.setTitle("MBE Viewer");
-        Scene scene = new Scene(new MBEViewer(), 800, 400);
+        Scene scene = new Scene(new MBEViewer(), 800, 800);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
