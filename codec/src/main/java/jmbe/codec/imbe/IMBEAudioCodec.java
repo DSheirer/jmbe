@@ -2,7 +2,7 @@ package jmbe.codec.imbe;
 
 /*******************************************************************************
  * jmbe - Java MBE Library
- * Copyright (C) 2015 Dennis Sheirer
+ * Copyright (C) 2013-2026 Dennis Sheirer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,14 +27,11 @@ import org.slf4j.LoggerFactory;
 public class IMBEAudioCodec implements IAudioCodec
 {
     private final static Logger mLog = LoggerFactory.getLogger(IMBEAudioCodec.class);
-
     public static final String CODEC_NAME = "IMBE";
-
-    private IMBESynthesizer mSynthesizer;
+    protected final IMBESynthesizer mSynthesizer = new IMBESynthesizer();
 
     public IMBEAudioCodec()
     {
-        mSynthesizer = new IMBESynthesizer();
     }
 
     @Override

@@ -82,4 +82,12 @@ public class WhiteNoiseGenerator
 
         return samples;
     }
+
+    public static void main(String[] args)
+    {
+        WhiteNoiseGenerator generator = new WhiteNoiseGenerator();
+        float[] noise = generator.getSamples(160, 0.003f);
+
+        System.out.println("Samples:" + Arrays.toString(noise));
+    }
 }

@@ -46,15 +46,26 @@ import java.util.List;
 public class AMBESynthesizer extends MBESynthesizer
 {
     private final static Logger mLog = LoggerFactory.getLogger(AMBESynthesizer.class);
-
-    private ToneGenerator mToneGenerator = new ToneGenerator();
-    private AMBEModelParameters mPreviousFrame = new AMBEModelParameters();
+    private final ToneGenerator mToneGenerator = new ToneGenerator();
+    private AMBEModelParameters mPreviousFrame;
+    private float mToneGain = 1.0f;
 
     /**
      * AMBE synthesizer producing 8 kHz 16-bit audio from AMBE audio (voice/tone) frames
      */
     public AMBESynthesizer()
     {
+        reset();
+    }
+
+    /**
+     * Sets an overall gain value for tone generation.
+     *
+     * @param gain in range 0.0f (disabled) to 2.0f (maximum) with 1.0f as the default
+     */
+    public void setToneGain(float gain)
+    {
+        mToneGain = gain;
     }
 
     /**
@@ -70,6 +81,7 @@ public class AMBESynthesizer extends MBESynthesizer
 
     public void reset()
     {
+        super.reset();
         mPreviousFrame = new AMBEModelParameters();
     }
 
@@ -81,7 +93,7 @@ public class AMBESynthesizer extends MBESynthesizer
      */
     public float[] getTone(ToneParameters toneParameters)
     {
-        return mToneGenerator.generate(toneParameters);
+        return mToneGenerator.generate(toneParameters, mToneGain);
     }
 
     /**
@@ -144,7 +156,7 @@ public class AMBESynthesizer extends MBESynthesizer
 
         if(audio == null)
         {
-            audio = new float[SAMPLES_PER_FRAME];
+            audio = new float[N_SAMPLES_PER_FRAME];
         }
 
         return audio;

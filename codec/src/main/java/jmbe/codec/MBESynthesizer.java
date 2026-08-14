@@ -20,6 +20,7 @@
 package jmbe.codec;
 
 import java.util.Arrays;
+import java.util.Random;
 import jmbe.codec.imbe.Window;
 import org.jtransforms.fft.FloatFFT_1D;
 
@@ -31,29 +32,70 @@ public abstract class MBESynthesizer
     private static final double TWO_PI = Math.PI * 2.0;
     private static final float TWO56_OVER_TWO_PI = 256.0f / (float)TWO_PI;
     private static final float AUDIO_SCALAR_16_BITS_SIGNED = 1.00f / (float)Short.MAX_VALUE;
-    private static final float MAXIMUM_AUDIO_AMPLITUDE = 0.95f;
-    protected static final int SAMPLES_PER_FRAME = 160;
-    private static final double WHITE_NOISE_SCALAR = TWO_PI / 53125.0;
-
+    private static final float MAXIMUM_AUDIO_AMPLITUDE = Short.MAX_VALUE * 0.95f;
+    protected static final int N_SAMPLES_PER_FRAME = 160;
     // Algorithm 121 - unvoiced scaling coefficient (yw) from synthesis window (ws) and pitch refinement window (wr)
     private static final float UNVOICED_SCALING_COEFFICIENT = 146.17696f;
-
     private final WhiteNoiseGenerator mWhiteNoiseGenerator = new WhiteNoiseGenerator();
     private final MBENoiseSequenceGenerator mMBENoiseSequenceGenerator = new MBENoiseSequenceGenerator();
     private final FloatFFT_1D mFFT = new FloatFFT_1D(256);
-    private double[] mPreviousPhaseO = new double[57];
-    private double[] mPreviousPhaseV = new double[57];
-    private float[] mPreviousUw = new float[256];
-    private float[] mCurrentUw = new float[256];
-    private final float[] mDftBinScalor = new float[128];
-    private final float[] mUnvoiced = new float[SAMPLES_PER_FRAME];
-    private final float[] mVoiced = new float[SAMPLES_PER_FRAME];
     private double[] mCurrentPhaseO = new double[57];
     private double[] mCurrentPhaseV = new double[57];
+    private double[] mPreviousPhaseO = new double[57];
+    private double[] mPreviousPhaseV = new double[57];
+    private float[] mCurrentUw = new float[256];
+    private float[] mPreviousUw = new float[256];
+    private final float[] mDftBinScalor = new float[128];
+    private final float[] mUnvoiced = new float[N_SAMPLES_PER_FRAME];
+    private final float[] mVoiced = new float[N_SAMPLES_PER_FRAME];
+    private float mNoiseGeneratorGain = 1.0f;
+    private final Random mRandomPl = new Random();
+    private final AGC mAGC = new AGC();
+    private boolean mAGCEnabled = true;
 
-    protected MBESynthesizer()
+    /**
+     * Enables or disables automatic gain control (AGC).
+     *
+     * @param enabled true to enable, false to disable.  Enabled by default.
+     */
+    public void setAGC(boolean enabled)
     {
+        mAGCEnabled = enabled;
     }
+
+    /**
+     * Resets the synthesizer at the end of a call to reset the AGC control.
+     */
+    public void reset()
+    {
+        mAGC.reset();
+
+        //Randomize the previous phasors in each of the frequency bands so that the synthesized audio doesn't have
+        //the periodic amplitude spikes where each band phasor is marching in unison at multiples of the fundamental
+        //frequency
+        for(int l = 0; l < 57; l++)
+        {
+            mPreviousPhaseV[l] = mRandomPl.nextDouble() * TWO_PI - Math.PI;
+        }
+    }
+
+    /**
+     * Sets the gain for white noise generation.
+     *
+     * @param gain in range 0.0f (disabled) to 2.0f (maximum) with 1.0f as the default
+     */
+    public void setNoiseGeneratorGain(float gain)
+    {
+        if(0.0 <= gain && gain <= 2.0)
+        {
+            mNoiseGeneratorGain = gain;
+        }
+        else
+        {
+            throw new IllegalArgumentException("Gain must be in range 0.0 (disabled) to 2.0 (maximum) with 1.0 as the default");
+        }
+    }
+
 
     /**
      * Access previous frame's MBE model parameters
@@ -157,18 +199,33 @@ public abstract class MBESynthesizer
      */
     public float[] getVoice(MBEModelParameters parameters)
     {
-        //Alg #117 - generate white noise samples.
-        float[] u = mMBENoiseSequenceGenerator.nextBuffer();
+        float[] audio = getVoiced(parameters);
 
-        float[] unvoiced = getUnvoiced(parameters, u);
-        float[] voiced = getVoiced(parameters, u);
+        int x;
 
-        float[] audio = new float[160];
-
-        //Alg #142 - combine voiced and unvoiced audio samples to form the completed audio samples.
-        for(int x = 0; x < 160; x++)
+        if(mNoiseGeneratorGain > 0.0)
         {
-            audio[x] = clip((voiced[x] + unvoiced[x]) * AUDIO_SCALAR_16_BITS_SIGNED);
+            //Alg #117 - generate white noise samples and populate unvoiced bands.
+            float[] unvoiced = getUnvoiced(parameters, mMBENoiseSequenceGenerator.nextBuffer(mNoiseGeneratorGain));
+
+            //Alg #142 - combine voiced and unvoiced audio samples to form the completed audio samples.
+            for(x = 0; x < 160; x++)
+            {
+                audio[x] += (unvoiced[x] * mNoiseGeneratorGain);
+            }
+        }
+
+        //Apply optional automatic gain control
+        if(mAGCEnabled)
+        {
+            audio = mAGC.process(audio);
+        }
+
+        //Constrain or clip audio to prevent clicking
+        for(x = 0; x < audio.length; x++)
+        {
+            audio[x] = clip(audio[x]);
+            audio[x] *= AUDIO_SCALAR_16_BITS_SIGNED;
         }
 
         return audio;
@@ -200,7 +257,13 @@ public abstract class MBESynthesizer
      */
     public float[] getWhiteNoise()
     {
-        return mWhiteNoiseGenerator.getSamples(160, 0.003f);
+        //Noise generator is disabled if gain is 0.0
+        if(mNoiseGeneratorGain == 0.0)
+        {
+            return new float[160];
+        }
+
+        return mWhiteNoiseGenerator.getSamples(160, 0.003f * mNoiseGeneratorGain);
     }
 
     /**
@@ -306,10 +369,10 @@ public abstract class MBESynthesizer
 
         /* Algorithm #126 - use Weighted Overlap Add algorithm to combine previous
          * Uw and the current Uw inverse DFT results to form final unvoiced set */
-        for(int n = 0; n < SAMPLES_PER_FRAME; n++)
+        for(int n = 0; n < N_SAMPLES_PER_FRAME; n++)
         {
             float previousWindow = synthesisWindow(n);
-            float currentWindow = synthesisWindow(n - SAMPLES_PER_FRAME);
+            float currentWindow = synthesisWindow(n - N_SAMPLES_PER_FRAME);
             //Uw samples index is in range 0<>255 and must be translated to -128 <> 127 for this algorithm, recognizing
             //that previousUw needs samples for indexes 0<>159 and currentUw needs samples -160<>-1
             float previousUw = (n < 128 ? mPreviousUw[n + 128] : 0.0f); //n
@@ -348,36 +411,31 @@ public abstract class MBESynthesizer
      * Reconstructs the voiced audio components using the model parameters from both the current and previous imbe frames.
      *
      * @param currentFrame - voice parameters
-     * @param u = white noise samples from algorithm #117
      * @return - 160 samples of voiced audio component
      */
-    public float[] getVoiced(MBEModelParameters currentFrame, float[] u)
+    public float[] getVoiced(MBEModelParameters currentFrame)
     {
         MBEModelParameters previousFrame = getPreviousFrame();
         double currentFrequency = currentFrame.getFundamentalFrequency();
         double previousFrequency = previousFrame.getFundamentalFrequency();
         double averageFrequency = (previousFrequency + currentFrequency) / 2.0f;
-        double phaseRotationPerFrame = averageFrequency * SAMPLES_PER_FRAME;
+        double phaseRotationPerFrame = averageFrequency * N_SAMPLES_PER_FRAME;
 
         //Alg #139 - calculate current phase angle for each harmonic
-        double[] currentPhaseV = mCurrentPhaseV;
-
         //Update each of the harmonic phase values in the oscillator bank
         for(int l = 1; l <= 56; l++)
         {
             //Alg #139 - calculate current phase v values
-            currentPhaseV[l] = mPreviousPhaseV[l] + (phaseRotationPerFrame * l);
+            mCurrentPhaseV[l] = mPreviousPhaseV[l] + (phaseRotationPerFrame * l);
 
             //Limit or unwrap the phase to +/- 2*PI radians
-            currentPhaseV[l] %= TWO_PI;
+            mCurrentPhaseV[l] %= TWO_PI;
         }
 
         //Short circuit if there are no voiced bands and return an array of zeros
         if(!previousFrame.hasVoicedBands() && !currentFrame.hasVoicedBands())
         {
-            double[] previousPhaseV = mPreviousPhaseV;
-            mPreviousPhaseV = currentPhaseV;
-            mCurrentPhaseV = previousPhaseV;
+            mPreviousPhaseV = mCurrentPhaseV;
             Arrays.fill(mVoiced, 0.0f);
             return mVoiced;
         }
@@ -398,8 +456,7 @@ public abstract class MBESynthesizer
         int unvoicedBandCount = currentFrame.getUnvoicedBandCount();
 
         //Alg #139 - calculate current phase angle for each harmonic
-        double[] currentPhaseO = mCurrentPhaseO;
-        int threshold = (int)Math.floor((float)currentL / 4.0f);
+        int threshold = (int)Math.floor((float)maxL / 4.0f);
 
         double pl;
 
@@ -407,40 +464,42 @@ public abstract class MBESynthesizer
         for(int l = 1; l <= 56; l++)
         {
             //Alg #140 - calculate current phase o values
-            if(l <= threshold)
+            if(l > threshold && l <= maxL)
             {
-                currentPhaseO[l] = currentPhaseV[l];
+                //Random number in range -PI to +PI
+                pl = (mRandomPl.nextDouble() * TWO_PI) - Math.PI;
+                mCurrentPhaseO[l] = mCurrentPhaseV[l] + ((unvoicedBandCount * pl) / currentL);
             }
-            else if(l <= maxL)
+            else
             {
-                pl = WHITE_NOISE_SCALAR * u[l] - Math.PI;
-                currentPhaseO[l] = currentPhaseV[l] + ((unvoicedBandCount * pl) / currentL);
+                mCurrentPhaseO[l] = mCurrentPhaseV[l];
             }
         }
 
         float[] currentM = currentFrame.getEnhancedSpectralAmplitudes();
         float[] previousM = previousFrame.getEnhancedSpectralAmplitudes();
+//        float[] currentM = currentFrame.getSpectralAmplitudes();
+//        float[] previousM = previousFrame.getSpectralAmplitudes();
         Arrays.fill(mVoiced, 0.0f);
-        float[] voiced = mVoiced;
 
         //Alg #127 - reconstruct 160 voice samples using each of the l harmonics that are common between this frame and
         // the previous frame, using one of four algorithms selected by the combination of the voicing decisions of the
         // current and previous frames for each harmonic.
         boolean exceedsThreshold = Math.abs(currentFrequency - previousFrequency) >= (0.1 * currentFrequency);
 
-        float amplitude;
-        double previousPhase, currentPhase, ol, wl, phase;
+        double previousPhase, currentPhase, ol, wl, phase, previousPhaseRotation, currentPhaseRotation, phaseCurvature;
+        float amplitude, previousWindow, currentWindow, interpolation;
+        int currentN;
 
-        for(int n = 0; n < SAMPLES_PER_FRAME; n++)
+        for(int n = 0; n < N_SAMPLES_PER_FRAME; n++)
         {
-            int currentN = n - SAMPLES_PER_FRAME;
-            float previousWindow = synthesisWindow(n);
-            float currentWindow = synthesisWindow(currentN);
-            float interpolation = (float)n / (float)SAMPLES_PER_FRAME;
-            double previousPhaseRotation = previousFrequency * n;
-            double currentPhaseRotation = currentFrequency * currentN;
-            double phaseCurvature = (currentFrequency - previousFrequency) *
-                ((double)n * n / 320.0);
+            currentN = n - N_SAMPLES_PER_FRAME;
+            previousWindow = synthesisWindow(n);
+            currentWindow = synthesisWindow(currentN);
+            interpolation = (float)n / (float) N_SAMPLES_PER_FRAME;
+            previousPhaseRotation = previousFrequency * n;
+            currentPhaseRotation = currentFrequency * currentN;
+            phaseCurvature = (currentFrequency - previousFrequency) * (n * n / 320.0);
 
             for(int l = 1; l <= maxL; l++)
             {
@@ -450,10 +509,10 @@ public abstract class MBESynthesizer
                     {
                         //Alg #133
                         previousPhase = mPreviousPhaseO[l] + (previousPhaseRotation * l);
-                        voiced[n] += 2.0f * (previousWindow * previousM[l] * (float)Math.cos(previousPhase));
+                        mVoiced[n] += 2.0f * (previousWindow * previousM[l] * (float)Math.cos(previousPhase));
 
-                        currentPhase = currentPhaseO[l] + (currentPhaseRotation * l);
-                        voiced[n] += 2.0f * (currentWindow * currentM[l] * (float)Math.cos(currentPhase));
+                        currentPhase = mCurrentPhaseO[l] + (currentPhaseRotation * l);
+                        mVoiced[n] += 2.0f * (currentWindow * currentM[l] * (float)Math.cos(currentPhase));
                     }
                     else
                     {
@@ -462,32 +521,30 @@ public abstract class MBESynthesizer
                         amplitude = previousM[l] + (interpolation * (currentM[l] - previousM[l]));
 
                         //Alg #137
-                        ol = (currentPhaseO[l] - mPreviousPhaseO[l] - (phaseRotationPerFrame * l));
+                        ol = (mCurrentPhaseO[l] - mPreviousPhaseO[l] - (phaseRotationPerFrame * l));
 
                         //Alg #138
                         wl = (ol - (TWO_PI * Math.floor((ol + Math.PI) / TWO_PI))) / 160.0;
 
                         //Alg #136 - phase function
-                        phase = mPreviousPhaseO[l] +
-                            ((previousPhaseRotation * l) + (wl * n)) +
-                            (phaseCurvature * l);
+                        phase = mPreviousPhaseO[l] + ((previousPhaseRotation * l) + (wl * n)) + (phaseCurvature * l);
 
                         //Alg #134
-                        voiced[n] += 2.0f * (amplitude * (float)Math.cos(phase));
+                        mVoiced[n] += 2.0f * (amplitude * (float)Math.cos(phase));
                     }
                 }
                 else if(!currentVoicing[l] && previousVoicing[l])
                 {
                     //Alg #131
-                    voiced[n] += 2.0f * (previousWindow * previousM[l] *
+                    mVoiced[n] += 2.0f * (previousWindow * previousM[l] *
                         (float)Math.cos(mPreviousPhaseO[l] + (previousPhaseRotation * l)));
                 }
                 else if(currentVoicing[l] && !previousVoicing[l])
                 {
 
                     //Alg #132
-                    voiced[n] += 2.0f * (currentWindow * currentM[l] *
-                        (float)Math.cos(currentPhaseO[l] + (currentPhaseRotation * l)));
+                    mVoiced[n] += 2.0f * (currentWindow * currentM[l] *
+                        (float)Math.cos(mCurrentPhaseO[l] + (currentPhaseRotation * l)));
                 }
 
                 //Alg #130 - harmonics that are unvoiced in both the current and previous frames contribute nothing
@@ -496,11 +553,12 @@ public abstract class MBESynthesizer
 
         double[] previousPhaseV = mPreviousPhaseV;
         double[] previousPhaseO = mPreviousPhaseO;
-        mPreviousPhaseV = currentPhaseV;
+        mPreviousPhaseO = mCurrentPhaseO;
+        mPreviousPhaseV = mCurrentPhaseV;
+        //Note: not sure why we're doing this, but when we don't, it causes bad audio artifacts.
         mCurrentPhaseV = previousPhaseV;
-        mPreviousPhaseO = currentPhaseO;
         mCurrentPhaseO = previousPhaseO;
 
-        return voiced;
+        return mVoiced;
     }
 }

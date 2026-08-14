@@ -2,8 +2,11 @@ package jmbe;
 
 import jmbe.codec.ambe.AMBEAudioCodec;
 import jmbe.codec.imbe.IMBEAudioCodec;
+import jmbe.codec.imbe.IMBEAudioCodecV2;
 import jmbe.iface.IAudioCodec;
 import jmbe.iface.IAudioCodecLibrary;
+import jmbe.iface.IAudioCodecLibraryV2;
+import jmbe.iface.IAudioCodecV2;
 
 public class JMBEAudioLibrary implements IAudioCodecLibrary
 {
@@ -25,7 +28,7 @@ public class JMBEAudioLibrary implements IAudioCodecLibrary
     @Override
     public int getMajorVersion()
     {
-        return 1;
+        return 2;
     }
 
     @Override
@@ -37,7 +40,7 @@ public class JMBEAudioLibrary implements IAudioCodecLibrary
     @Override
     public int getBuildVersion()
     {
-        return 9;
+        return 0;
     }
 
     @Override

@@ -20,8 +20,6 @@
 package jmbe;
 
 import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -53,8 +51,6 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import jmbe.audio.JMBEAudioFormat;
-import jmbe.codec.MBESynthesizer;
 import jmbe.codec.imbe.IMBEFrame;
 import jmbe.codec.imbe.IMBEFundamentalFrequency;
 import jmbe.codec.imbe.IMBEModelParameters;
@@ -401,54 +397,49 @@ public class MBEViewer extends VBox
             return;
         }
 
-        new Thread(new Runnable()
-        {
-            @Override
-            public void run()
+        new Thread(() -> {
+            List<float[]> samplesList = new ArrayList<>();
+            int sampleCount = 0;
+
+            //Invoke the synthesize for IMBE audio
+            IMBESynthesizer synthesizer = new IMBESynthesizer();
+            synthesizer.setNoiseGeneratorGain(2.0f);
+
+            for(VoiceFrame voiceFrame: sequence.getVoiceFrames())
             {
-                List<float[]> samplesList = new ArrayList<>();
-                int sampleCount = 0;
-
-                //Invoke the synthesize for IMBE audio
-                IMBESynthesizer synthesizer = new IMBESynthesizer();
-
-                for(VoiceFrame voiceFrame: sequence.getVoiceFrames())
-                {
-                    float[] samples = synthesizer.getAudio(new IMBEFrame(voiceFrame.getFrameBytes()));
-                    sampleCount += samples.length;
-                    samplesList.add(samples);
-                }
-
-                AudioFormat audioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
-                        8000.0f, 16, 1, 2, 8000.0f, false);
-                ByteBuffer pcm = ByteBuffer.allocate(sampleCount * 2).order(ByteOrder.LITTLE_ENDIAN);
-
-                for(float[] samples: samplesList)
-                {
-                    for(float sample : samples)
-                    {
-                        float clipped = Math.max(-0.95f, Math.min(0.95f, 5 * sample));
-                        pcm.putShort((short)(clipped * Short.MAX_VALUE));
-                    }
-                }
-
-                byte[] audioBytes = pcm.array();
-                AudioInputStream audioInputStream = new AudioInputStream(
-                        new ByteArrayInputStream(audioBytes), audioFormat, sampleCount);
-
-                File outputFile = Paths.get("/run/media/denny/T9/Recordings/AMBE Research/mbe_output.wav").toFile();
-
-                try
-                {
-                    AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, outputFile);
-                }
-                catch(IOException ioe)
-                {
-                    ioe.printStackTrace();
-                }
-
-                JOptionPane.showMessageDialog(null, "Synthesized audio saved to " + outputFile.getAbsolutePath());
+                float[] samples = synthesizer.getAudio(new IMBEFrame(voiceFrame.getFrameBytes()));
+                sampleCount += samples.length;
+                samplesList.add(samples);
             }
+
+            AudioFormat audioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
+                    8000.0f, 16, 1, 2, 8000.0f, false);
+            ByteBuffer pcm = ByteBuffer.allocate(sampleCount * 2).order(ByteOrder.LITTLE_ENDIAN);
+
+            for(float[] samples: samplesList)
+            {
+                for(float sample : samples)
+                {
+                    pcm.putShort((short)(sample * Short.MAX_VALUE));
+                }
+            }
+
+            byte[] audioBytes = pcm.array();
+            AudioInputStream audioInputStream = new AudioInputStream(
+                    new ByteArrayInputStream(audioBytes), audioFormat, sampleCount);
+
+            File outputFile = Paths.get("/run/media/denny/T9/Recordings/AMBE Research/mbe_output.wav").toFile();
+
+            try
+            {
+                AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, outputFile);
+            }
+            catch(IOException ioe)
+            {
+                ioe.printStackTrace();
+            }
+
+            JOptionPane.showMessageDialog(null, "Synthesized audio saved to " + outputFile.getAbsolutePath());
         }).start();
     }
 
