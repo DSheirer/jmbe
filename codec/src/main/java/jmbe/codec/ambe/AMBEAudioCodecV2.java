@@ -36,7 +36,7 @@ public class AMBEAudioCodecV2 extends AMBEAudioCodec implements IAudioCodecV2
             {
                 if(value instanceof Float gain && 0.0 <= gain && gain <= 2.0)
                 {
-                    mSynthesizer.setNoiseGeneratorGain(gain);
+                    mSynthesizer.setComfortNoiseGeneratorGain(gain);
                 }
                 else
                 {

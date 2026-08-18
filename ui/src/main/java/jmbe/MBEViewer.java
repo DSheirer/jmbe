@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -68,6 +69,7 @@ import javax.swing.JOptionPane;
 public class MBEViewer extends VBox
 {
     private static final String KEY_LAST_DIRECTORY = "mbe.last.directory";
+    private static final String KEY_LAST_FILE = "mbe.last.file";
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
         DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.systemDefault());
     private final Preferences mPreferences = Preferences.userNodeForPackage(MBEViewer.class);
@@ -88,6 +90,19 @@ public class MBEViewer extends VBox
     {
         getChildren().addAll(getMenuBar(), getHeader(), getFrameTable());
         VBox.setVgrow(getFrameTable(), Priority.ALWAYS);
+
+        //Auto load the last used file
+        String lastDirectory = mPreferences.get(KEY_LAST_DIRECTORY, null);
+        String lastFile = mPreferences.get(KEY_LAST_FILE, null);
+        if(lastDirectory != null && lastFile != null)
+        {
+            Path path = Paths.get(lastDirectory, lastFile);
+
+            if(Files.exists(path) && Files.isRegularFile(path))
+            {
+                load(path);
+            }
+        }
     }
 
     /**
@@ -360,6 +375,7 @@ public class MBEViewer extends VBox
                 fileChooser.setTitle("Select MBE File");
 
                 String lastDirectory = mPreferences.get(KEY_LAST_DIRECTORY, null);
+                String lastFile = mPreferences.get(KEY_LAST_FILE, null);
                 if(lastDirectory != null)
                 {
                     Path path = Paths.get(lastDirectory);
@@ -372,6 +388,7 @@ public class MBEViewer extends VBox
                 {
                     load(selected.toPath());
                     mPreferences.put(KEY_LAST_DIRECTORY, selected.getParent());
+                    mPreferences.put(KEY_LAST_FILE, selected.getName());
                 }
             });
 
@@ -399,17 +416,25 @@ public class MBEViewer extends VBox
 
         new Thread(() -> {
             List<float[]> samplesList = new ArrayList<>();
-            int sampleCount = 0;
 
             //Invoke the synthesize for IMBE audio
             IMBESynthesizer synthesizer = new IMBESynthesizer();
-            synthesizer.setNoiseGeneratorGain(2.0f);
+//            synthesizer.setComfortNoiseGeneratorGain(0.4f);
+
+            int sampleCount = 0;
+            int millis = 0;
 
             for(VoiceFrame voiceFrame: sequence.getVoiceFrames())
             {
+                if(millis >= 3660)
+                {
+                    int a = 0;
+                }
                 float[] samples = synthesizer.getAudio(new IMBEFrame(voiceFrame.getFrameBytes()));
+                millis += 20;
                 sampleCount += samples.length;
                 samplesList.add(samples);
+
             }
 
             AudioFormat audioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,

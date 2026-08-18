@@ -104,6 +104,8 @@ public class IMBEFrame
         mErrorCountTotal += mErrors[6];
 
         mFundamentalFrequency = IMBEFundamentalFrequency.fromValue(mFrame.getInt(VECTOR_B0));
+
+        System.out.println("L: " + mFundamentalFrequency.getL() + " Errors: " + Arrays.toString(mErrors) + " Total: " + mErrorCountTotal + " Freq: " + mFundamentalFrequency);
     }
 
     public IMBEFundamentalFrequency getFundamentalFrequency()
@@ -181,6 +183,11 @@ public class IMBEFrame
     {
         int L = getFundamentalFrequency().getL();
 
+        if(L == 49)
+        {
+            int a = 0;
+        }
+
         GainIndexes gainIndexes = GainIndexes.fromL(getFundamentalFrequency().getL());
         int gainIndex = mFrame.getInt(gainIndexes.getIndexes());
         Gain gain = Gain.fromValue(gainIndex);
@@ -213,33 +220,34 @@ public class IMBEFrame
         //Alg 69 & 70 - Construct gain vector R as inverse DCT of G and transfer Ri to C[i][1]
         for(int i = 1; i <= 6; i++)
         {
-            C[i][1] = G[1];
+            C[i][1] = G[1]; //Simplified for m=1 (1 * G[1] * 1)
 
             for(int m = 2; m <= 6; m++)
             {
-                C[i][1] += (2.0f * G[m] * (float)Math.cos((Math.PI * (float)(m - 1) * ((float)i - 0.5f)) / 6.0f));
+                C[i][1] += (2.0f * G[m] * (float)Math.cos((Math.PI * (m - 1.0) * (i - 0.5)) / 6.0));
             }
         }
 
         //Alg 71 and 72 - Decode the higher order DCT Coefficients
-        int m = 0;
-        int[] indexSet;
+        int m, i, j;
+        int[] indexSet, harmonics;
+        float b;
 
-        for(int i = 1; i <= 6; i++)
+        for(i = 1; i <= 6; i++)
         {
-            int[] harmonics = harmonicAllocations[i - 1];
+            harmonics = harmonicAllocations[i - 1];
 
             if(harmonics.length > 1)
             {
-                for(int j = 2; j <= harmonics.length; j++)
+                for(j = 2; j <= harmonics.length; j++)
                 {
                     m = harmonics[j - 1];
                     indexSet = indexes.getIndexes()[m - 3];
 
                     if(indexSet.length > 0)
                     {
-                        int b = mFrame.getInt(indexSet);
-                        C[i][j] = stepSizes.getStepSizes()[m - 3] * ((float)b - COEFFICIENT_OFFSET[indexSet.length]);
+                        b = (float)mFrame.getInt(indexSet);
+                        C[i][j] = stepSizes.getStepSizes()[m - 3] * (b - COEFFICIENT_OFFSET[indexSet.length]);
                     }
                 }
             }
@@ -248,21 +256,21 @@ public class IMBEFrame
         //Alg 73 & 74 - inverse DCT of C to produce c and transfer results to Tl
         float[] T = new float[L + 1];
 
-        int l = 1;
+        int l = 1, k, Ji;
 
-        for(int i = 1; i <= 6; i++) /* J-Block index */
+        for(i = 1; i <= 6; i++) /* J-Block index */
         {
-            int Ji = harmonicAllocations[i - 1].length;
+            Ji = harmonicAllocations[i - 1].length;
 
-            for(int j = 1; j <= Ji; j++)
+            for(j = 1; j <= Ji; j++)
             {
-                T[l] = C[i][1];
+                T[l] = C[i][1]; //Simplified for k=1
 
                 if(Ji >= 2)
                 {
-                    for(int k = 2; k <= Ji; k++)
+                    for(k = 2; k <= Ji; k++)
                     {
-                        T[l] += 2.0f * C[i][k] * (float)Math.cos((Math.PI * (float)(k - 1) * ((float)j - 0.5f)) / (float)Ji);
+                        T[l] += 2.0f * C[i][k] * (float)Math.cos((Math.PI * (k - 1.0) * (j - 0.5)) / Ji);
                     }
                 }
 
@@ -389,10 +397,10 @@ public class IMBEFrame
         //Algorithm #77
         for(int l = 1; l <= L; l++)
         {
-            log2M[l] = T[l]
-                + (p * (1.0f - sl[l]) * previousLog2M[klFloor[l]])
-                + (p * sl[l] * previousLog2M[klFloor[l] + 1])
-                - plSum;
+            log2M[l] = T[l] +
+                (p * (1.0f - sl[l]) * previousLog2M[klFloor[l]]) +
+                (p * sl[l] * previousLog2M[klFloor[l] + 1]) -
+                plSum;
         }
 
         return log2M;

@@ -58,9 +58,8 @@ public class AGC
     /**
      * Process a buffer of audio samples and apply gain.
      * @param samples to adjust.
-     * @return amplified audio samples
      */
-    public float[] process(float[] samples)
+    public void process(float[] samples)
     {
         float currentAmplitude;
 
@@ -82,8 +81,6 @@ public class AGC
         objective = Math.min(objective, MAXIMUM_GAIN);
         objective = Math.max(objective, MINIMUM_GAIN);
 
-        float[] processed = new float[samples.length];
-        float amplified;
         float gain = mCurrentGain;
 
         //Stop updating gain once we've reached the objective
@@ -91,10 +88,9 @@ public class AGC
         {
             for(int x = 0; x < samples.length; x++)
             {
-                amplified = samples[x] * gain;
-                amplified = FastMath.min(amplified, MAXIMUM_AMPLITUDE);
-                amplified = FastMath.max(amplified, -MAXIMUM_AMPLITUDE);
-                processed[x] = amplified;
+                samples[x] *= gain;
+                samples[x] = FastMath.min(samples[x], MAXIMUM_AMPLITUDE);
+                samples[x] = FastMath.max(samples[x], -MAXIMUM_AMPLITUDE);
             }
         }
         else
@@ -110,16 +106,14 @@ public class AGC
                     gain += ((objective - gain) * ATTACK_GAIN_LOOP_BANDWIDTH);
                 }
 
-                amplified = samples[x] * gain;
-                amplified = FastMath.min(amplified, MAXIMUM_AMPLITUDE);
-                amplified = FastMath.max(amplified, -MAXIMUM_AMPLITUDE);
-                processed[x] = amplified;
+                samples[x] *= gain;
+                samples[x] = FastMath.min(samples[x], MAXIMUM_AMPLITUDE);
+                samples[x] = FastMath.max(samples[x], -MAXIMUM_AMPLITUDE);
             }
 
             mCurrentGain = gain;
         }
 
         System.out.println("Gain: " + gain + " Objective: " + objective);
-        return processed;
     }
 }
