@@ -30,8 +30,8 @@ public class AGC
 {
     private static final float MINIMUM_GAIN = 2.4f;
     private static final float DEFAULT_GAIN = 3.0f;
-    private static final float MAXIMUM_GAIN = 8.5f;
-    private static final float ATTACK_GAIN_LOOP_BANDWIDTH = 0.0015f;
+    private static final float MAXIMUM_GAIN = 30.0f;
+    private static final float ATTACK_GAIN_LOOP_BANDWIDTH = 0.001f;
     private static final float DECAY_GAIN_LOOP_BANDWIDTH = 0.05f;
     private static final float OBJECTIVE_AMPLITUDE = Short.MAX_VALUE * 0.85f;
     private static final float MAXIMUM_AMPLITUDE = Short.MAX_VALUE * 0.95f;
@@ -114,6 +114,6 @@ public class AGC
             mCurrentGain = gain;
         }
 
-        System.out.println("Gain: " + gain + " Objective: " + objective);
+        System.out.println("\tGain: " + gain + " Objective: " + objective);
     }
 }

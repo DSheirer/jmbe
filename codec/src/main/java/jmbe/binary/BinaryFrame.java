@@ -128,6 +128,61 @@ public class BinaryFrame extends BitSet
         }
     }
 
+    /**
+     * Hex string representation of the message
+     * @return message in hex
+     */
+    public String toHexString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        for(int x = 0; x < size(); x += 4)
+        {
+            sb.append(getNibbleAsHex(x));
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Format the byte value that starts at the specified index as hexadecimal.  If the length of the message is less
+     * than the start index plus 7 bits, then the value represents those bits as high-order bits with zero padding in
+     * the least significant bits to make up the 8 bit value.
+     * @param startIndex of the byte.
+     * @return hexadecimal representation of the byte value
+     */
+    public String getNibbleAsHex(int startIndex)
+    {
+        int value = getNibble(startIndex);
+        return Integer.toHexString(value).toUpperCase();
+    }
+
+    /**
+     * Returns the 4-bit nibble value contained between index and index + 3 bit positions.  If the length of this
+     * message is shorter than index + 3, then the least significant bits are set to zero in the returned value.
+     *
+     * @param startIndex specifying the start of the byte value
+     * @return nibble value contained at index <> index + 3 bit positions
+     */
+    public int getNibble(int startIndex)
+    {
+        int value = 0;
+
+        for(int x = 0; x < 4; x++)
+        {
+            value <<= 1;
+
+            int index = startIndex + x;
+
+            if(index <= size() && get(index))
+            {
+                value++;
+            }
+        }
+
+        return value;
+    }
+
 
     /**
      * Current pointer index

@@ -226,8 +226,7 @@ public abstract class MBESynthesizer
             audio[x] *= AUDIO_SCALAR_16_BITS_SIGNED;
         }
 
-        return new float[160];
-//        return audio;
+        return audio;
     }
 
     /**

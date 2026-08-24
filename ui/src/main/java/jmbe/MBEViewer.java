@@ -263,8 +263,11 @@ public class MBEViewer extends VBox
             TableColumn<ObservableFrame, Integer> errorTotalColumn = new TableColumn<>("Error Total");
             errorTotalColumn.setCellValueFactory(new PropertyValueFactory<>("errorCountTotal"));
 
+            TableColumn<ObservableFrame, Integer> frameRepeatCountColumn = new TableColumn<>("Repeat Count");
+            frameRepeatCountColumn.setCellValueFactory(new PropertyValueFactory<>("repeatCount"));
+
             mFrameTable.getColumns().addAll(frameNumberColumn, timestampColumn, encryptedColumn,
-                frequencyColumn, bandCountColumn, errorRateColumn, errorTotalColumn);
+                frequencyColumn, bandCountColumn, errorRateColumn, errorTotalColumn, frameRepeatCountColumn);
         }
 
         return mFrameTable;

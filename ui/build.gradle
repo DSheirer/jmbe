@@ -16,6 +16,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.22.1'
     implementation 'org.slf4j:slf4j-api:2.0.17'
 
+    //ThumbDV dependency
+    implementation 'com.fazecast:jSerialComm:2.11.4'
+
     testImplementation platform('org.junit:junit-bom:6.0.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

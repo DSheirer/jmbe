@@ -104,8 +104,6 @@ public class IMBEFrame
         mErrorCountTotal += mErrors[6];
 
         mFundamentalFrequency = IMBEFundamentalFrequency.fromValue(mFrame.getInt(VECTOR_B0));
-
-        System.out.println("L: " + mFundamentalFrequency.getL() + " Errors: " + Arrays.toString(mErrors) + " Total: " + mErrorCountTotal + " Freq: " + mFundamentalFrequency);
     }
 
     public IMBEFundamentalFrequency getFundamentalFrequency()

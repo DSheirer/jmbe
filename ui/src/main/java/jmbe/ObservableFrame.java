@@ -80,6 +80,16 @@ public class ObservableFrame
     }
 
     /**
+     * Number of times this frame has been repeated due to high error rate
+     *
+     * @return
+     */
+    public int getRepeatCount()
+    {
+        return mModelParameters.getRepeatCount();
+    }
+
+    /**
      * Indicates if the voice frame is encrypted
      * @return
      */
