@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    id 'idea'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 group = 'jmbe'
@@ -22,6 +24,10 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:6.0.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+javafx {
+    modules = [ 'javafx.controls', 'javafx.fxml' ]
 }
 
 test {

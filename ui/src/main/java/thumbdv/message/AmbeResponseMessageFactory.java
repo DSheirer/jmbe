@@ -28,6 +28,7 @@ import thumbdv.message.response.EncodeSpeechResponse;
 import thumbdv.message.response.GetConfigResponse;
 import thumbdv.message.response.InitializeCodecResponse;
 import thumbdv.message.response.ProductIdResponse;
+import thumbdv.message.response.ReadConfigResponse;
 import thumbdv.message.response.ReadyResponse;
 import thumbdv.message.response.SetChannelFormatResponse;
 import thumbdv.message.response.SetChannelResponse;
@@ -73,6 +74,8 @@ public class AmbeResponseMessageFactory
                         return new SetPacketModeResponse(data);
                     case PKT_GET_CONFIG:
                         return new GetConfigResponse(data);
+                    case PKT_READ_CONFIG:
+                        return new ReadConfigResponse(data);
                     case PKT_INIT:
                         return new InitializeCodecResponse(data);
                     case PKT_PRODUCT_ID:

@@ -88,6 +88,23 @@ public class BinaryFrame extends BitSet
     }
 
     /**
+     * Loads the integer value into the specified indices.
+     *
+     * @param indices array of indices where index[0] is the MSB and index[length - 1] is the LSB.
+     * @param value to load into the indices
+     */
+    public void setInt(int[] indices, int value)
+    {
+        int mask;
+
+        for(int index = 0; index < indices.length; index++)
+        {
+            mask = 1 << indices.length - index - 1;
+            set(indices[index], value & mask);
+        }
+    }
+
+    /**
      * Returns a new binary frame containing the bits from (inclusive) to
      * end (exclusive).
      *

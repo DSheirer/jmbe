@@ -17,7 +17,7 @@
  * *****************************************************************************
  */
 
-package thumbdv.message;
+package thumbdv.message.type;
 
 import java.util.EnumSet;
 
@@ -60,6 +60,14 @@ public enum InterfaceConfiguration
     public boolean isCodecMode()
     {
         return CODEC_MODES.contains(this);
+    }
+
+    /**
+     * Value of the bit registers.
+     */
+    public int getValue()
+    {
+        return mValue;
     }
 
     /**

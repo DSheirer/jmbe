@@ -38,7 +38,7 @@ public enum PacketField
     PKT_VERSION_STRING(0x31),
     PKT_COMPAND(0x32),
     PKT_RESET(0x33),
-    PKT_RESET_TO_SOFTWARE_CONFIG(0x34),
+    PKT_RESET_SOFT_CONFIG(0x34),
     PKT_HALT(0x35),
     PKT_GET_CONFIG(0x36),
     PKT_READ_CONFIG(0x37),
@@ -125,7 +125,7 @@ public enum PacketField
             case (byte)0x33:
                 return PKT_RESET;
             case (byte)0x34:
-                return PKT_RESET_TO_SOFTWARE_CONFIG;
+                return PKT_RESET_SOFT_CONFIG;
             case (byte)0x35:
                 return PKT_HALT;
             case (byte)0x36:

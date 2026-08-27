@@ -23,31 +23,21 @@
 package thumbdv.message.request;
 
 import thumbdv.message.PacketField;
-import thumbdv.message.type.VocoderRate;
 
 /**
- * Set Vocoder Rate request packet
+ * Read configuration request packet
  */
-public class SetVocoderRequest extends AmbeRequest
+public class ReadConfigRequest extends AmbeRequest
 {
-    private VocoderRate mVocoderRate;
-
-    public SetVocoderRequest(VocoderRate rate)
-    {
-        mVocoderRate = rate;
-    }
-
     @Override
     public PacketField getType()
     {
-        return PacketField.PKT_RATE_TABLE;
+        return PacketField.PKT_READ_CONFIG;
     }
 
     @Override
     public byte[] getData()
     {
-        byte[] data = createMessage(2, getType());
-        data[PAYLOAD_START_INDEX + 1] = mVocoderRate.getValue();
-        return data;
+        return createMessage(1, getType());
     }
 }

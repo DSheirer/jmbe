@@ -22,15 +22,27 @@
 
 package thumbdv.message.response;
 
-import thumbdv.message.InterfaceConfiguration;
+import thumbdv.message.AmbeMessage;
+import thumbdv.message.type.Compander;
+import thumbdv.message.type.InterfaceConfiguration;
 import thumbdv.message.PacketField;
+import thumbdv.message.type.UartBaudRate;
+import thumbdv.message.type.VocoderRate;
 
 /**
  * Get configuration response
  */
 public class GetConfigResponse extends AmbeResponse
 {
-    private static final int[] INTERFACE_SELECTION = new int[]{0, 1, 2};
+    private static final int[] INTERFACE_SELECTION = new int[] { 0, 1, 2 };
+    private static final int DTX_ENABLE = 3;
+    private static final int NOISE_SUPPRESSOR_ENABLE = 5;
+    private static final int[] COMPANDER = new int[] { 6, 7 };
+    private static final int[] VOCODER_RATE = new int[] { 8, 9, 10, 11, 12, 13 };
+    private static final int ECHO_CANCELLER_ENABLE = 14;
+    private static final int ECHO_SUPPRESSOR_ENABLE = 15;
+    private static final int[] UART_BAUD_RATE = new int[] { 16, 17, 18 };
+    private static final int PARITY_ENABLE = 20;
 
     public GetConfigResponse(byte[] message)
     {
@@ -45,16 +57,91 @@ public class GetConfigResponse extends AmbeResponse
         return InterfaceConfiguration.fromValue(getFrame().getInt(INTERFACE_SELECTION));
     }
 
+    /**
+     * Discontinuous transmission.  Indicates if the Voice Activity Detection (VAD) and Comfort Noise Insertion (CNI)
+     * are enabled.
+     *
+     * @return true if enabled, false if disabled.
+     */
+    public boolean isDTX()
+    {
+        return getFrame().get(DTX_ENABLE);
+    }
+
+    public boolean isNoiseSuppressor()
+    {
+        return getFrame().get(NOISE_SUPPRESSOR_ENABLE);
+    }
+
+    public boolean isEchoCanceller()
+    {
+        return getFrame().get(ECHO_CANCELLER_ENABLE);
+    }
+
+    public boolean isEchoSuppressor()
+    {
+        return getFrame().get(ECHO_SUPPRESSOR_ENABLE);
+    }
+
+    /**
+     * Compander enable and compander type status.
+     * @return compander entry.
+     */
+    public Compander getCompander()
+    {
+        return Compander.fromValue(getFrame().getInt(COMPANDER));
+    }
+
+    /**
+     * Vocoder rate setting.
+     * @return vocoder rate.
+     */
+    public VocoderRate getVocoderRate()
+    {
+        return VocoderRate.fromValue(getFrame().getInt(VOCODER_RATE));
+    }
+
+    /**
+     * UART comm port rate setting.
+     * @return baud rate.
+     */
+    public UartBaudRate getUartBaudRate()
+    {
+        return UartBaudRate.fromValue(getFrame().getInt(UART_BAUD_RATE));
+    }
+
+    /**
+     * Indicates if parity is enabled.
+     *
+     * @return true if enabled, false if disabled.
+     */
+    public boolean isParityEnabled()
+    {
+        return getFrame().get(PARITY_ENABLE);
+    }
+
     @Override
     public PacketField getType()
     {
         return PacketField.PKT_GET_CONFIG;
     }
 
-
     @Override
     public String toString()
     {
-        return "CONFIGURATION INTERFACE:" + getInterface() + " PAYLOAD:" + getFrame().toHexString() + " RAW:" + toHex(getMessage());
+        StringBuilder sb = new StringBuilder();
+        sb.append("CONFIGURATION -");
+        sb.append(" VOCODER: ").append(getVocoderRate());
+        sb.append(" INTERFACE: ").append(getInterface());
+        sb.append(" UART BAUD RATE: ").append(getUartBaudRate());
+        sb.append(" COMPANDER: ").append(getCompander());
+        sb.append(" DTX (VAD/CNI): ").append(isDTX());
+        sb.append(" PARITY ENABLE: ").append(isParityEnabled());
+        sb.append(" ECHO CANCELLER: ").append(isEchoCanceller());
+        sb.append(" ECHO SUPPRESSOR: ").append(isEchoSuppressor());
+        sb.append(" NOISE SUPPRESSOR: ").append(isNoiseSuppressor());
+        sb.append(" MSG [").append(AmbeMessage.toHex(getPayload())).append("]");
+
+        return sb.toString();
     }
 }

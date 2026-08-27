@@ -20,34 +20,41 @@
  *
  */
 
-package thumbdv.message.request;
+package thumbdv.message.response;
 
+import thumbdv.message.type.InterfaceConfiguration;
 import thumbdv.message.PacketField;
-import thumbdv.message.type.VocoderRate;
 
 /**
- * Set Vocoder Rate request packet
+ * Get configuration response
  */
-public class SetVocoderRequest extends AmbeRequest
+public class ReadConfigResponse extends AmbeResponse
 {
-    private VocoderRate mVocoderRate;
+    private static final int[] INTERFACE_SELECTION = new int[]{0, 1, 2};
 
-    public SetVocoderRequest(VocoderRate rate)
+    public ReadConfigResponse(byte[] message)
     {
-        mVocoderRate = rate;
+        super(message);
+    }
+
+    /**
+     * Physical interface selection
+     */
+    public InterfaceConfiguration getInterface()
+    {
+        return InterfaceConfiguration.fromValue(getFrame().getInt(INTERFACE_SELECTION));
     }
 
     @Override
     public PacketField getType()
     {
-        return PacketField.PKT_RATE_TABLE;
+        return PacketField.PKT_READ_CONFIG;
     }
 
+
     @Override
-    public byte[] getData()
+    public String toString()
     {
-        byte[] data = createMessage(2, getType());
-        data[PAYLOAD_START_INDEX + 1] = mVocoderRate.getValue();
-        return data;
+        return "CONFIGURATION INTERFACE:" + getInterface() + " PAYLOAD:" + getFrame().toHexString() + " RAW:" + toHex(getMessage());
     }
 }

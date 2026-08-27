@@ -23,7 +23,7 @@
 package thumbdv.message.request;
 
 import thumbdv.message.PacketField;
-import thumbdv.message.VocoderRate;
+import thumbdv.message.type.VocoderRate;
 
 /**
  * Decode speech request, used to request decode of an encoded audio frame.
@@ -78,7 +78,7 @@ public class DecodeSpeechRequest extends AmbeRequest
             int offset = CHANNEL_DATA_IDENTIFIER_INDEX;
 
             data[offset++] = PacketField.VOCODER.getCode();
-            data[offset++] = mVocoderRate.getCode();
+            data[offset++] = mVocoderRate.getValue();
 
             data[offset++] = PacketField.CHANNEL_DATA_HARD_SYMBOL.getCode();
             data[offset++] = (byte)(0xFF & (mAudioFrame.length * 8));

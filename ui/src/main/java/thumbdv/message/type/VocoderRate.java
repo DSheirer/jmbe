@@ -1,26 +1,23 @@
 /*
+ * ******************************************************************************
+ * Copyright (C) 2015-2026 Dennis Sheirer
  *
- *  * ******************************************************************************
- *  * Copyright (C) 2014-2019 Dennis Sheirer
- *  *
- *  * This program is free software: you can redistribute it and/or modify
- *  * it under the terms of the GNU General Public License as published by
- *  * the Free Software Foundation, either version 3 of the License, or
- *  * (at your option) any later version.
- *  *
- *  * This program is distributed in the hope that it will be useful,
- *  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  * GNU General Public License for more details.
- *  *
- *  * You should have received a copy of the GNU General Public License
- *  * along with this program.  If not, see <http://www.gnu.org/licenses/>
- *  * *****************************************************************************
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * *****************************************************************************
  */
 
-package thumbdv.message;
+package thumbdv.message.type;
 
 public enum VocoderRate
 {
@@ -90,32 +87,52 @@ public enum VocoderRate
     RATE_58(0x3A, 4000,2400),
     RATE_59(0x3B, 4400,2800), //Is this compatible with APCO25 Phase 1?
     RATE_60(0x3C, 4000,4000),
-    RATE_61(0x3D, 3600,6000);
+    RATE_61(0x3D, 3600,6000),
+    UNKNOWN(0xFF, 0, 0);
 
-    private final int mCode;
+    private final int mValue;
     private final int mSpeechRate;
     private final int mFecRate;
 
     /**
-     * Constructs an instance of VocoderRate using the specified code, speech rate and forward error correction rate.
+     * Constructs an instance of VocoderRate using the specified code, speech rate, and forward error correction rate.
      *
-     * @param code binary value of the vocoder rate
+     * @param value binary value of the vocoder rate
      * @param speechRate in bits per second (bps)
      * @param fecRate in bits per second (bps)
      */
-    VocoderRate(int code, int speechRate, int fecRate)
+    VocoderRate(int value, int speechRate, int fecRate)
     {
-        mCode = code;
+        mValue = value;
         mSpeechRate = speechRate;
         mFecRate = fecRate;
     }
 
     /**
+     * Lookup the vocoder rate from the specified value
+     *
+     * @param value to lookup
+     * @return matching entry or UNKNOWN
+     */
+    public static VocoderRate fromValue(int value)
+    {
+        for(VocoderRate rate : VocoderRate.values())
+        {
+            if(rate.getValue() == value)
+            {
+                return rate;
+            }
+        }
+
+        return UNKNOWN;
+    }
+
+    /**
      * Byte code value for the vocoder rate
      */
-    public byte getCode()
+    public byte getValue()
     {
-        return (byte)mCode;
+        return (byte)mValue;
     }
 
     /**

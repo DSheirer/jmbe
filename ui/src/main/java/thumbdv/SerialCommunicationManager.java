@@ -62,7 +62,7 @@ public class SerialCommunicationManager
      * Submit queue is fixed to 2x requests in play at a time.  The ICD indicates that the AMBE-3000 has input buffer
      * capacity to hold 2x requests.
      */
-    private final BlockingQueue<AsyncRequest> mSubmitQueue = new ArrayBlockingQueue<>(2);
+    private final BlockingQueue<AsyncRequest> mSubmitQueue = new ArrayBlockingQueue<>(1);
     private final SerialPort mSerialPort;
     private SendProcessor mSendProcessor;
     private ReceiveProcessor mReceiveProcessor;
@@ -248,6 +248,7 @@ public class SerialCommunicationManager
                     // at a time.  The ICD indicates that the AMBE-3000 has input buffer capacity for two requests.
                     mSubmitQueue.put(request);
 
+                    LOG.info("\tSENDING Request: " + request.getRequest());
                     try
                     {
                         mOutputStream.write(request.getRequest().getData());
@@ -261,6 +262,7 @@ public class SerialCommunicationManager
                 }
                 catch(InterruptedException ie)
                 {
+                    LOG.info("Send processor interrupted");
                     //Ignore and allow the thread to die when end() is called.
                 }
             }
@@ -314,14 +316,32 @@ public class SerialCommunicationManager
             {
                 try
                 {
-                    //Blocking call to read the 4-byte message header
-                    int read = mInputStream.read(mReceiveBuffer, 0, 4);
+                    int read = 0;
 
+                    while(read < 4)
+                    {
+                        read += mInputStream.read(mReceiveBuffer, read, 4 - read);
+                    }
+
+                    LOG.info("\tREADING [" + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, read)) + "]");
                     if(read == 4 && mReceiveBuffer[0] == PACKET_START)
                     {
                         int length = (0xFF & mReceiveBuffer[1]) << 8;
                         length += (0xFF & mReceiveBuffer[2]);
-                        read = mInputStream.read(mReceiveBuffer, 4, length);
+
+                        read = 0;
+
+                        while(read < length)
+                        {
+                            try
+                            {
+                                read += mInputStream.read(mReceiveBuffer, 4 + read, length - read);
+                            }
+                            catch(IndexOutOfBoundsException iobe)
+                            {
+                                LOG.error("Read: " + read + " Length:" + length + " Buffer: " + AmbeMessage.toHex(mReceiveBuffer), iobe);
+                            }
+                        }
 
                         if(read == length)
                         {
