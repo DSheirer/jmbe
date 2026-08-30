@@ -22,14 +22,14 @@
 
 package thumbdv.message.request;
 
+import java.util.logging.Logger;
 import jmbe.binary.BinaryFrame;
+import thumbdv.message.AmbeMessage;
 import thumbdv.message.type.Compander;
 import thumbdv.message.type.InterfaceConfiguration;
 import thumbdv.message.PacketField;
 import thumbdv.message.type.UartBaudRate;
 import thumbdv.message.type.VocoderRate;
-
-import java.nio.ByteOrder;
 
 /**
  * Reset request packet with configuration values
@@ -47,19 +47,31 @@ public class ResetWithConfigRequest extends AmbeRequest
     private static final int PARITY_ENABLE = 20;
 
     private final InterfaceConfiguration mInterfaceConfiguration;
-    private boolean mDTXEnable = false;
-    private boolean mNoiseSuppressor = true;
-    private Compander mCompander = Compander.OFF;
-    private VocoderRate mVocoderRate = VocoderRate.RATE_0;
-    private boolean mEchoCanceller = false;
-    private boolean mEchoSuppressor = false;
+    private final VocoderRate mVocoderRate;
     private UartBaudRate mUartBaudRate = UartBaudRate.RATE_460_800;
-    private boolean mParity = true;
-    private static final byte[] MASK = new byte[]{(byte)0xF7, (byte)0xFF, (byte)0xE4};
+    private Compander mCompander = Compander.OFF;
+    private boolean mDTXEnabled = false;
+    private boolean mEchoCancelerEnabled = false;
+    private boolean mEchoSuppressorEnabled = false;
+    private boolean mNoiseSuppressorEnabled = true;
+    private boolean mParityEnabled = true;
 
-    public ResetWithConfigRequest(InterfaceConfiguration interfaceConfiguration)
+    /**
+     * MASK bits.  Although the ICD shows CFG0 bit 4 must be set to zero, the device allows that bit register to be
+     * masked as writable.  Also, the default read config state of CFG2 is 0xEC even though bit 5 is reserved. The mask
+     * uses a value of E8 to align with the ICD reserved bits and attempting to set it any other way results in an
+     * error state.
+     **/
+    private static final byte[] MASK = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xE8};
+
+    /**
+     * Constructs an instance
+     * @param interfaceConfiguration to use
+     */
+    public ResetWithConfigRequest(InterfaceConfiguration interfaceConfiguration, VocoderRate vocoderRate)
     {
         mInterfaceConfiguration = interfaceConfiguration;
+        mVocoderRate = vocoderRate;
     }
 
     @Override
@@ -73,20 +85,18 @@ public class ResetWithConfigRequest extends AmbeRequest
     {
         BinaryFrame frame = new BinaryFrame(24);
         frame.setInt(INTERFACE_SELECTION, mInterfaceConfiguration.getValue());
-        frame.set(DTX_ENABLE, mDTXEnable);
-        frame.set(NOISE_SUPPRESSOR_ENABLE, mNoiseSuppressor);
+        frame.set(DTX_ENABLE, mDTXEnabled);
+        frame.set(NOISE_SUPPRESSOR_ENABLE, mNoiseSuppressorEnabled);
         frame.setInt(COMPANDER, mCompander.getValue());
         frame.setInt(VOCODER_RATE, mVocoderRate.getValue());
-        frame.set(ECHO_CANCELLER_ENABLE, mEchoCanceller);
-        frame.set(ECHO_SUPPRESSOR_ENABLE, mEchoSuppressor);
+        frame.set(ECHO_CANCELLER_ENABLE, mEchoCancelerEnabled);
+        frame.set(ECHO_SUPPRESSOR_ENABLE, mEchoSuppressorEnabled);
         frame.setInt(UART_BAUD_RATE, mUartBaudRate.getValue());
-        frame.set(PARITY_ENABLE, mParity);
-
-        byte[] data = createMessage(6, getType());
-        byte[] payload = frame.toByteArray();
-        System.arraycopy(payload, 0, data, 4, payload.length);
-        System.arraycopy(MASK, 0, data, 7, MASK.length);
-
+        frame.set(PARITY_ENABLE, mParityEnabled);
+        byte[] data = createMessage(7, getType());
+        byte[] payload = frame.getBytes(3);
+        System.arraycopy(payload, 0, data, 5, payload.length);
+        System.arraycopy(MASK, 0, data, 8, MASK.length);
         return data;
     }
 
@@ -96,8 +106,58 @@ public class ResetWithConfigRequest extends AmbeRequest
      *
      * @param enable true to enable, false to disable.  Disabled by default.
      */
-    public void setDTXEnable(boolean enable)
+    public void setDTXEnabled(boolean enable)
     {
-        mDTXEnable = enable;
+        mDTXEnabled = enable;
+    }
+
+    /**
+     * Enables (default) or disables the noise suppressor feature.
+     */
+    public void setNoiseSuppressorEnabled(boolean enable)
+    {
+        mNoiseSuppressorEnabled = enable;
+    }
+
+    /**
+     * Sets the enabled or disabled (default) state of the compander and the compander type.
+     * @param compander enabled and type
+     */
+    public void setCompander(Compander compander)
+    {
+        mCompander = compander;
+    }
+
+    /**
+     * Sets the enabled or disabled (default) state of the echo canceler feature.
+\     */
+    public void setEchoCancelerEnabled(boolean enable)
+    {
+        mEchoCancelerEnabled = enable;
+    }
+
+    /**
+     * Sets the enabled or disabled (default)  state of the echo suppressor feature.
+     */
+    public void setEchoSuppressorEnabled(boolean enable)
+    {
+        mEchoSuppressorEnabled = enable;
+    }
+
+    /**
+     * Sets the baud rate (460k default) for the UART serial port.
+     * @param baudRate for the port.
+     */
+    public void setUartBaudRate(UartBaudRate baudRate)
+    {
+        mUartBaudRate = baudRate;
+    }
+
+    /**
+     * Sets the enabled (default) or disabled state of parity feature.
+     */
+    public void setParityEnabled(boolean enable)
+    {
+        mParityEnabled = enable;
     }
 }

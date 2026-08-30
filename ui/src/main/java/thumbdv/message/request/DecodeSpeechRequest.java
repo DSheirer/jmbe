@@ -70,12 +70,12 @@ public class DecodeSpeechRequest extends AmbeRequest
     @Override
     public byte[] getData()
     {
+        int offset = 4;
+
         if(hasVocoderRate())
         {
             int length = mAudioFrame.length + 9;
-
             byte[] data = createMessage(length, getType());
-            int offset = CHANNEL_DATA_IDENTIFIER_INDEX;
 
             data[offset++] = PacketField.VOCODER.getCode();
             data[offset++] = mVocoderRate.getValue();
@@ -97,10 +97,15 @@ public class DecodeSpeechRequest extends AmbeRequest
             int length = mAudioFrame.length + 2;
             byte[] data = createMessage(length, getType());
 
-            int offset = CHANNEL_DATA_IDENTIFIER_INDEX;
+            //Specifies the encoded audio frame is in hard symbol decision bit format, and the bit length.
             data[offset++] = PacketField.CHANNEL_DATA_HARD_SYMBOL.getCode();
             data[offset++] = (byte)(0xFF & (mAudioFrame.length * 8));
+
+            //Encoded audio frame data
             System.arraycopy(mAudioFrame, 0, data, offset, mAudioFrame.length);
+//            offset += mAudioFrame.length;
+//            data[offset++] = PacketField.SAMPLE_COUNT.getCode();
+//            data[offset] = (byte)0xA0; //160 samples
 
             return data;
         }

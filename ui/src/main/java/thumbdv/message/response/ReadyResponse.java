@@ -45,6 +45,6 @@ public class ReadyResponse extends AmbeResponse
     @Override
     public String toString()
     {
-        return "DEVICE READY!";
+        return "DEVICE READY! " + toHex(getMessage());
     }
 }

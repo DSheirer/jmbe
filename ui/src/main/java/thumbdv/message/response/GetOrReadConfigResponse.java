@@ -32,7 +32,7 @@ import thumbdv.message.type.VocoderRate;
 /**
  * Get configuration response
  */
-public class GetConfigResponse extends AmbeResponse
+public class GetOrReadConfigResponse extends AmbeResponse
 {
     private static final int[] INTERFACE_SELECTION = new int[] { 0, 1, 2 };
     private static final int DTX_ENABLE = 3;
@@ -44,7 +44,7 @@ public class GetConfigResponse extends AmbeResponse
     private static final int[] UART_BAUD_RATE = new int[] { 16, 17, 18 };
     private static final int PARITY_ENABLE = 20;
 
-    public GetConfigResponse(byte[] message)
+    public GetOrReadConfigResponse(byte[] message)
     {
         super(message);
     }
@@ -131,16 +131,16 @@ public class GetConfigResponse extends AmbeResponse
     {
         StringBuilder sb = new StringBuilder();
         sb.append("CONFIGURATION -");
-        sb.append(" VOCODER: ").append(getVocoderRate());
-        sb.append(" INTERFACE: ").append(getInterface());
-        sb.append(" UART BAUD RATE: ").append(getUartBaudRate());
-        sb.append(" COMPANDER: ").append(getCompander());
-        sb.append(" DTX (VAD/CNI): ").append(isDTX());
-        sb.append(" PARITY ENABLE: ").append(isParityEnabled());
-        sb.append(" ECHO CANCELLER: ").append(isEchoCanceller());
-        sb.append(" ECHO SUPPRESSOR: ").append(isEchoSuppressor());
-        sb.append(" NOISE SUPPRESSOR: ").append(isNoiseSuppressor());
-        sb.append(" MSG [").append(AmbeMessage.toHex(getPayload())).append("]");
+        sb.append(" VOCODER:").append(getVocoderRate());
+        sb.append(" INTERFACE:").append(getInterface());
+        sb.append(" UART BAUD RATE:").append(getUartBaudRate());
+        sb.append(" COMPANDER:").append(getCompander());
+        sb.append(" DTX (VAD/CNI):").append(isDTX());
+        sb.append(" PARITY ENABLE:").append(isParityEnabled());
+        sb.append(" ECHO CANCELLER:").append(isEchoCanceller());
+        sb.append(" ECHO SUPPRESSOR:").append(isEchoSuppressor());
+        sb.append(" NOISE SUPPRESSOR:").append(isNoiseSuppressor());
+        sb.append(" MSG [").append(AmbeMessage.toHex(getPayload()).trim()).append("]");
 
         return sb.toString();
     }

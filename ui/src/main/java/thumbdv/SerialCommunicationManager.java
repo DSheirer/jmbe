@@ -49,7 +49,7 @@ public class SerialCommunicationManager
      * Serial port send and receive buffers sized to hold 2x max-length request or response messages. The largest
      * messages are the encode/decode speech messages that are 327 (160 samples x 2 bytes + 7 overhead) bytes each.
      */
-    private static final int MAX_MESSAGE_LENGTH = 327;
+    private static final int MAX_MESSAGE_LENGTH = 350;
     private static final int SERIAL_PORT_BUFFER_SIZE = MAX_MESSAGE_LENGTH * 2;
     private final byte[] mReceiveBuffer = new byte[MAX_MESSAGE_LENGTH];
 
@@ -62,7 +62,7 @@ public class SerialCommunicationManager
      * Submit queue is fixed to 2x requests in play at a time.  The ICD indicates that the AMBE-3000 has input buffer
      * capacity to hold 2x requests.
      */
-    private final BlockingQueue<AsyncRequest> mSubmitQueue = new ArrayBlockingQueue<>(1);
+    private final BlockingQueue<AsyncRequest> mSubmitQueue = new ArrayBlockingQueue<>(2);
     private final SerialPort mSerialPort;
     private SendProcessor mSendProcessor;
     private ReceiveProcessor mReceiveProcessor;
@@ -237,6 +237,8 @@ public class SerialCommunicationManager
         @Override
         public void run()
         {
+            LOG.info("Send thread running ... ");
+
             while(mRunning)
             {
                 try
@@ -248,13 +250,14 @@ public class SerialCommunicationManager
                     // at a time.  The ICD indicates that the AMBE-3000 has input buffer capacity for two requests.
                     mSubmitQueue.put(request);
 
-                    LOG.info("\tSENDING Request: " + request.getRequest());
                     try
                     {
+                        LOG.info("... Sending:" + request.getRequest());
                         mOutputStream.write(request.getRequest().getData());
                     }
                     catch(IOException ioe)
                     {
+                        LOG.error("Error while sending", ioe);
                         //If the request fails, remove it from the queue and signal the future with the exception.
                         mSubmitQueue.remove(request);
                         request.getFuture().completeExceptionally(ioe);
@@ -266,6 +269,8 @@ public class SerialCommunicationManager
                     //Ignore and allow the thread to die when end() is called.
                 }
             }
+
+            LOG.info("Send thread now stopped");
         }
 
         /**
@@ -312,41 +317,40 @@ public class SerialCommunicationManager
         @Override
         public void run()
         {
+            LOG.info("Receive thread running ... ");
+
             while(mRunning)
             {
                 try
                 {
-                    int read = 0;
+                    int read = 0, total = 0;
 
-                    while(read < 4)
+                    while(read >= 0 && total < 4)
                     {
-                        read += mInputStream.read(mReceiveBuffer, read, 4 - read);
+                        read = mInputStream.read(mReceiveBuffer, total, 4 - total);
+                        total += read;
                     }
 
-                    LOG.info("\tREADING [" + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, read)) + "]");
-                    if(read == 4 && mReceiveBuffer[0] == PACKET_START)
+                    if(total == 4 && mReceiveBuffer[0] == PACKET_START)
                     {
                         int length = (0xFF & mReceiveBuffer[1]) << 8;
                         length += (0xFF & mReceiveBuffer[2]);
 
                         read = 0;
+                        total = 0;
 
-                        while(read < length)
+                        while(read >= 0 && total < length)
                         {
-                            try
-                            {
-                                read += mInputStream.read(mReceiveBuffer, 4 + read, length - read);
-                            }
-                            catch(IndexOutOfBoundsException iobe)
-                            {
-                                LOG.error("Read: " + read + " Length:" + length + " Buffer: " + AmbeMessage.toHex(mReceiveBuffer), iobe);
-                            }
+                            read = mInputStream.read(mReceiveBuffer, 4 + read, length - read);
+                            total += read;
                         }
 
-                        if(read == length)
+                        if(total == length)
                         {
                             AmbeResponse response = AmbeResponseMessageFactory
                                     .getMessage(Arrays.copyOf(mReceiveBuffer, length + 4));
+
+                            LOG.info("Received response: " + response);
 
                             AsyncRequest request = mSubmitQueue.poll();
 
@@ -359,6 +363,10 @@ public class SerialCommunicationManager
                                 LOG.error("Received response for unknown request: " + response);
                             }
                         }
+                        else
+                        {
+                            LOG.error("Unexpected packet read byte count: " + read + " - expected: " + length);
+                        }
                     }
                     else if(read > 0)
                     {
@@ -366,12 +374,18 @@ public class SerialCommunicationManager
                         LOG.error("Unrecognized packet fragment [" + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, read)) +
                                 "] skipped [" + skipped + "] bytes remaining in the input stream to clear the buffer.");
                     }
+                    else
+                    {
+                        LOG.info("Input stream closed - read:" + read + " total:" + total);
+                    }
                 }
                 catch(IOException ioe)
                 {
                     LOG.error("Error reading from serial port", ioe);
                 }
             }
+
+            LOG.info("Receive thread now stopped");
         }
 
         /**

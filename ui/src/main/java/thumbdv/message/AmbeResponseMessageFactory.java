@@ -25,7 +25,7 @@ package thumbdv.message;
 import thumbdv.message.response.AmbeResponse;
 import thumbdv.message.response.DecodeSpeechResponse;
 import thumbdv.message.response.EncodeSpeechResponse;
-import thumbdv.message.response.GetConfigResponse;
+import thumbdv.message.response.GetOrReadConfigResponse;
 import thumbdv.message.response.InitializeCodecResponse;
 import thumbdv.message.response.ProductIdResponse;
 import thumbdv.message.response.ReadConfigResponse;
@@ -73,9 +73,9 @@ public class AmbeResponseMessageFactory
                     case PKT_CODEC_STOP:
                         return new SetPacketModeResponse(data);
                     case PKT_GET_CONFIG:
-                        return new GetConfigResponse(data);
                     case PKT_READ_CONFIG:
-                        return new ReadConfigResponse(data);
+                        //Deliberate fall through
+                        return new GetOrReadConfigResponse(data);
                     case PKT_INIT:
                         return new InitializeCodecResponse(data);
                     case PKT_PRODUCT_ID:

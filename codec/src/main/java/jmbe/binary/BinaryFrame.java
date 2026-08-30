@@ -100,7 +100,15 @@ public class BinaryFrame extends BitSet
         for(int index = 0; index < indices.length; index++)
         {
             mask = 1 << indices.length - index - 1;
-            set(indices[index], value & mask);
+
+            if((value & mask) == mask)
+            {
+                set(indices[index]);
+            }
+            else
+            {
+                clear(indices[index]);
+            }
         }
     }
 
@@ -319,13 +327,11 @@ public class BinaryFrame extends BitSet
     public byte[] getBytes(int length)
     {
         byte[] data = new byte[length];
-
         int counter = 0;
 
         while(counter < length)
         {
             data[counter] = getByte(counter * 8);
-
             counter++;
         }
 
@@ -344,13 +350,12 @@ public class BinaryFrame extends BitSet
 
         for(int x = offset; x < offset + 8; x++)
         {
+            value = Integer.rotateLeft(value, 1);
+
             if(get(x))
             {
                 value++;
-                ;
             }
-
-            value = Integer.rotateLeft(value, 1);
         }
 
         return (byte)(value & 0xFF);

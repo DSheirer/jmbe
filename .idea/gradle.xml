@@ -4,9 +4,10 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
-        <option name="distributionType" value="LOCAL" />
+        <option name="delegatedBuild" value="false" />
+        <option name="testRunner" value="PLATFORM" />
+        <option name="disableWrapperSourceDistributionNotification" value="true" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleJvm" value="zulu-25" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
@@ -16,13 +17,11 @@
             <option value="$PROJECT_DIR$/ui" />
           </set>
         </option>
-        <option name="myGradleHome" value="C:\Projects\gradle-9.7.1" />
       </GradleProjectSettings>
       <GradleProjectSettings>
-        <option name="distributionType" value="LOCAL" />
+        <option name="delegatedBuild" value="false" />
+        <option name="testRunner" value="PLATFORM" />
         <option name="externalProjectPath" value="$PROJECT_DIR$/codec" />
-        <option name="gradleJvm" value="zulu-25" />
-        <option name="myGradleHome" value="C:\Projects\gradle-9.7.1" />
       </GradleProjectSettings>
     </option>
   </component>

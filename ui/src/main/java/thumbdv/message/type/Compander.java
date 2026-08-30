@@ -24,7 +24,10 @@ package thumbdv.message.type;
  */
 public enum Compander
 {
-    OFF(0),
+    /**
+     * Note: when MSB is set to off, the LSB (uLAW/aLAW select) has to be set to 1, otherwise the soft reset doesn't take.
+     */
+    OFF(1),
     ON_U_LAW(2),
     ON_A_LAW(3),
     UNKNOWN(-1);

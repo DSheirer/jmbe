@@ -53,6 +53,6 @@ public class DecodeSpeechResponse extends AmbeResponse
     @Override
     public String toString()
     {
-        return "DECODED SPEECH: SAMPLE COUNT:" + getSamples().length + " " + toHex(getMessage());
+        return "DECODED SPEECH: SAMPLE COUNT:" + getSamples().length + " MSG:" + toHex(getMessage());
     }
 }
