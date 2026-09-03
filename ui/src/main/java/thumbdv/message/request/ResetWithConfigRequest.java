@@ -36,15 +36,21 @@ import thumbdv.message.type.VocoderRate;
  */
 public class ResetWithConfigRequest extends AmbeRequest
 {
-    private static final int[] INTERFACE_SELECTION = new int[] { 0, 1, 2 };
-    private static final int DTX_ENABLE = 3;
-    private static final int NOISE_SUPPRESSOR_ENABLE = 5;
-    private static final int[] COMPANDER = new int[] { 6, 7 };
-    private static final int[] VOCODER_RATE = new int[] { 8, 9, 10, 11, 12, 13 };
-    private static final int ECHO_CANCELLER_ENABLE = 14;
-    private static final int ECHO_SUPPRESSOR_ENABLE = 15;
-    private static final int[] UART_BAUD_RATE = new int[] { 16, 17, 18 };
-    private static final int PARITY_ENABLE = 20;
+    //Bit indices are in order MSB to LSB.  The ICD table shows reverse, LSB to MSB order.
+    private static final int[] COMPANDER = new int[] { 0, 1 };
+    private static final int NOISE_SUPPRESSOR_ENABLE = 2;
+    //Bit 3 must always be zero.
+    private static final int DTX_ENABLE = 4;
+    private static final int[] INTERFACE_SELECTION = new int[] { 5, 6, 7 };
+
+    private static final int ECHO_SUPPRESSOR_ENABLE = 8;
+    private static final int ECHO_CANCELLER_ENABLE = 9;
+    private static final int[] VOCODER_RATE = new int[] { 10, 11, 12, 13, 14, 15 };
+
+    //Bit 16-18 Reserved
+    private static final int PARITY_ENABLE = 19;
+    //Bit 20 Reserved
+    private static final int[] UART_BAUD_RATE = new int[] { 21, 22, 23 };
 
     private final InterfaceConfiguration mInterfaceConfiguration;
     private final VocoderRate mVocoderRate;
@@ -54,7 +60,7 @@ public class ResetWithConfigRequest extends AmbeRequest
     private boolean mEchoCancelerEnabled = false;
     private boolean mEchoSuppressorEnabled = false;
     private boolean mNoiseSuppressorEnabled = true;
-    private boolean mParityEnabled = true;
+    private boolean mParityEnabled = false;
 
     /**
      * MASK bits.  Although the ICD shows CFG0 bit 4 must be set to zero, the device allows that bit register to be
@@ -62,7 +68,7 @@ public class ResetWithConfigRequest extends AmbeRequest
      * uses a value of E8 to align with the ICD reserved bits and attempting to set it any other way results in an
      * error state.
      **/
-    private static final byte[] MASK = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xE8};
+    private static final byte[] MASK = new byte[]{(byte)0xEF, (byte)0xFF, (byte)0x14};
 
     /**
      * Constructs an instance
@@ -159,5 +165,11 @@ public class ResetWithConfigRequest extends AmbeRequest
     public void setParityEnabled(boolean enable)
     {
         mParityEnabled = enable;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "RESET WITH CONFIG INTERFACE:" + mInterfaceConfiguration + " VOCODER:" + mVocoderRate + " MSG:" + toHex(getData());
     }
 }

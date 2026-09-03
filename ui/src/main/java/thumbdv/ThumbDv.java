@@ -21,22 +21,30 @@ package thumbdv;
 
 import com.fazecast.jSerialComm.SerialPort;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import jmbe.codec.ambe.AMBEFrame;
+import jmbe.codec.ambe.Tone;
+import jmbe.codec.ambe.ToneParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import thumbdv.message.AmbeMessage;
-import thumbdv.message.InitializeOption;
 import thumbdv.message.request.AmbeRequest;
-import thumbdv.message.request.DecodeSpeechRequest;
-import thumbdv.message.request.InitializeCodecRequest;
+import thumbdv.message.request.DecodeAmbeRequest;
+import thumbdv.message.request.EncodeAudioRequest;
+import thumbdv.message.request.FlushRequest;
+import thumbdv.message.request.GetConfigRequest;
 import thumbdv.message.request.ProductIdRequest;
-import thumbdv.message.request.SetVocoderRequest;
+import thumbdv.message.request.SetPacketModeRequest;
+import thumbdv.message.request.SetVocoderParametersRequest;
 import thumbdv.message.request.VersionRequest;
 import thumbdv.message.response.AmbeResponse;
-import thumbdv.message.type.VocoderRate;
+import thumbdv.message.response.EncodeAmbeResponse;
 
 /**
  * Northwest Digital Radio (NWDR) ThumbDv dongle.
@@ -47,6 +55,10 @@ import thumbdv.message.type.VocoderRate;
  * sudo usermod -a -G dialout username
  * sudo usermod -a -G lock username
  * sudo usermod -a -G tty username
+ *
+ * Note: FTDI chip serial port latency defaults to 16 ms.  On Linux, issue the following to change to 1 ms:
+ * sudo sh -c 'echo 1 > /sys/bus/usb-serial/devices/ttyUSB0/latency_timer'
+ * See: https://github.com/DVSwitch/AMBEServer/blob/main/AMBEtest5.md
  */
 public class ThumbDv implements AutoCloseable
 {
@@ -158,13 +170,20 @@ public class ThumbDv implements AutoCloseable
             AmbeRequest request;
             AmbeResponse response;
 
-            request = new InitializeCodecRequest(InitializeOption.DECODER);
-            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
-            LOG.info("Initialize Codec Response: " + response);
+//            request = new InitializeCodecRequest(InitializeOption.DECODER);
+//            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
+//            LOG.info("Initialize Codec Response: " + response);
 
-            request = new SetVocoderRequest(VocoderRate.RATE_33);
-            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
-            LOG.info("Set Vocoder Response: " + response);
+            response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
+            LOG.info("Original Config Response: " + response);
+
+//            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, VocoderRate.RATE_33);
+//            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
+//            LOG.info("Reset Response: " + response);
+
+//            request = new SetVocoderRequest(VocoderRate.RATE_33);
+//            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
+//            LOG.info("Set Vocoder Response: " + response);
 
 //            AmbeResponse response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
 //            LOG.info("Startup Configuration Response: " + response);
@@ -182,13 +201,15 @@ public class ThumbDv implements AutoCloseable
 //            response = thumbDv.send(configRequest).get(2, TimeUnit.SECONDS);
 //            LOG.info("Soft Reset Config Response: " + response);
 //
-//            //Confirm that the settings take effect ...
-//            response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
-//            LOG.info("Config Verification Response: " + response);
+            //Confirm that the settings take effect ...
+            response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
+            LOG.info("Config Verification Response: " + response);
 
-//            response = thumbDv.send(new SetPacketModeRequest()).get(2, TimeUnit.SECONDS);
-//            LOG.info("Set Packet Mode: " + response);
+            response = thumbDv.send(new SetVocoderParametersRequest(0x0431, 0x0754, 0x2400, 0x0000, 0x0000, 0x6F48 )).get(2, TimeUnit.SECONDS);
+            LOG.info("Custom Vocoder Response: " + response);
 
+            response = thumbDv.send(new SetPacketModeRequest()).get(2, TimeUnit.SECONDS);
+            LOG.info("Set Packet Mode: " + response);
 
             String[] frames = {"0E46122323067C60F8", "0E469433C1067CF1BC", "0E46122B23067C60F8", "0E67162BE08874E2B4",
                     "0E46163BE1067CF1BC", "0E46122B23067C60F8", "0A06163BE00A5C303E", "0E46122B23067C60F8", "0E46163BE1847CE1FC",
@@ -229,67 +250,63 @@ public class ThumbDv implements AutoCloseable
 
             List<Future<AmbeResponse>> futures = new ArrayList<>();
 
-            int counter = 0;
+//            request = new EncodeAudioRequest(new ToneParameters(Tone.T12, 7));
+            request = new EncodeAudioRequest(new float[160]);
 
-            for(byte[] ambeFrame: frameData)
+            LOG.info("Sending speech/audio requests");
+            futures.add(thumbDv.send(request));
+            futures.add(thumbDv.send(request));
+            futures.add(thumbDv.send(request));
+
+//            for(byte[] ambeFrame: frameData)
+//            {
+//                request = new DecodeAmbeRequest(ambeFrame);
+//                LOG.info("Decode Request: " + AmbeMessage.toHex(request.getData()));
+//                futures.add(thumbDv.send(new DecodeAmbeRequest(ambeFrame)));
+//            }
+//
+            LOG.info("Sending flush request ");
+            thumbDv.send(new FlushRequest());
+
+            List<byte[]> ambeFrames = new ArrayList<>();
+
+            for(Future<AmbeResponse> future : futures)
             {
-                counter++;
-                request = new DecodeSpeechRequest(ambeFrame);
-                LOG.info("Decode Request: " + AmbeMessage.toHex(request.getData()));
-//                futures.add(thumbDv.send(new DecodeSpeechRequest(ambeFrame)));
+                try
+                {
+                    response = future.get(5, TimeUnit.SECONDS);
+                    LOG.info("Decode Response: " + response);
 
-                thumbDv.send(request);
-
-
-//                response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
-//                LOG.info("Decode Response: " + response);
+                    if(response instanceof EncodeAmbeResponse ear)
+                    {
+                        ambeFrames.add(ear.getEncodedSpeech());
+                    }
+                    else
+                    {
+                        LOG.info("Oops: " + response);
+                    }
+                }
+                catch(Exception e)
+                {
+                    LOG.error("Aborted timeout wait: " + e.getMessage());
+                }
             }
 
-//            for(Future<AmbeResponse> future : futures)
-//            {
-//                response = future.get(5, TimeUnit.SECONDS);
-//                LOG.info("Decode Response: " + response);
-//            }
+            LOG.info("*** Processing [" + ambeFrames.size() + "] frames");
+
+            for(byte[] ambeFrame : ambeFrames)
+            {
+                LOG.info("Frame: " + Arrays.toString(ambeFrame));
+                AMBEFrame frame = new AMBEFrame(ambeFrame);
+                LOG.info("Errors: " + Arrays.toString(frame.getErrors()));
+            }
+
 
             LOG.info("Sleeping ...");
             Thread.sleep(15000);
             LOG.info("End sleep.");
 
             thumbDv.close();
-
-            //            for(byte[] frame : frameData)
-//            {
-//                thumbDv.send(new DecodeSpeechRequest(frame))
-//            }
-
-            //        try(ThumbDv thumbDv = new ThumbDv(AudioProtocol.NXDN, listener))
-            //        {
-            //            thumbDv.start();
-            //
-            //            Thread.sleep(6000);
-            //
-            //            for(int x = 0; x < 20; x++)
-            //            {
-            //                thumbDv.send(new EncodeSpeechRequest(new short[160]));
-            //                Thread.sleep(20);
-            //            }
-            //            //            for(byte[] frame : frameData)
-            //            //            {
-            //            //                thumbDv.decode(frame);
-            //            //            }
-            //
-            //            while(true);
-            //        }
-            //        catch(IOException ioe)
-            //        {
-            //            mLog.error("Error", ioe);
-            //        }
-            //        catch(InterruptedException e)
-            //        {
-            //            e.printStackTrace();
-            //        }
-
-
 
         }
         catch(Exception e)

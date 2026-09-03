@@ -28,7 +28,7 @@ import thumbdv.message.type.VocoderRate;
 /**
  * Decode speech request, used to request decode of an encoded audio frame.
  */
-public class DecodeSpeechRequest extends AmbeRequest
+public class DecodeAmbeRequest extends AmbeRequest
 {
     private static final int CHANNEL_DATA_IDENTIFIER_INDEX = 4;
     private static final byte SAMPLE_COUNT = (byte)(0xFF & 160);  //8 kHz Audio sample count for 20ms frame
@@ -41,17 +41,23 @@ public class DecodeSpeechRequest extends AmbeRequest
      * @param audioFrame of encoded audio samples
      * @param vocoderRate to use when decoding
      */
-    public DecodeSpeechRequest(byte[] audioFrame, VocoderRate vocoderRate)
+    public DecodeAmbeRequest(byte[] audioFrame, VocoderRate vocoderRate)
     {
         mAudioFrame = audioFrame;
         mVocoderRate = vocoderRate;
+    }
+
+    @Override
+    public boolean isAudioDecode()
+    {
+        return true;
     }
 
     /**
      * Constructs an audio frame decode request using the current vocoder rate.
      * @param audioFrame of encoded audio samples
      */
-    public DecodeSpeechRequest(byte[] audioFrame)
+    public DecodeAmbeRequest(byte[] audioFrame)
     {
         this(audioFrame, null);
     }
@@ -74,11 +80,11 @@ public class DecodeSpeechRequest extends AmbeRequest
 
         if(hasVocoderRate())
         {
-            int length = mAudioFrame.length + 9;
+            int length = mAudioFrame.length + 8;
             byte[] data = createMessage(length, getType());
 
             data[offset++] = PacketField.VOCODER.getCode();
-            data[offset++] = mVocoderRate.getValue();
+//            data[offset++] = mVocoderRate.getValue();
 
             data[offset++] = PacketField.CHANNEL_DATA_HARD_SYMBOL.getCode();
             data[offset++] = (byte)(0xFF & (mAudioFrame.length * 8));
@@ -97,15 +103,20 @@ public class DecodeSpeechRequest extends AmbeRequest
             int length = mAudioFrame.length + 2;
             byte[] data = createMessage(length, getType());
 
+//            data[offset++] = PacketField.VOCODER.getCode();
+//            data[offset++] = VocoderRate.RATE_33.getValue();
+
             //Specifies the encoded audio frame is in hard symbol decision bit format, and the bit length.
             data[offset++] = PacketField.CHANNEL_DATA_HARD_SYMBOL.getCode();
             data[offset++] = (byte)(0xFF & (mAudioFrame.length * 8));
-
-            //Encoded audio frame data
             System.arraycopy(mAudioFrame, 0, data, offset, mAudioFrame.length);
-//            offset += mAudioFrame.length;
+            offset += mAudioFrame.length;
 //            data[offset++] = PacketField.SAMPLE_COUNT.getCode();
-//            data[offset] = (byte)0xA0; //160 samples
+//            data[offset++] = (byte)0xA0; //160 samples
+
+//            data[offset++] = PacketField.CMODE.getCode();
+//            data[offset++] = (byte)0x00;
+//            data[offset] = (byte)0x00;
 
             return data;
         }

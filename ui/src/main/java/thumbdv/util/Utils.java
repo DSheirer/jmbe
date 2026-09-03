@@ -48,6 +48,21 @@ import java.nio.ShortBuffer;
 public class Utils
 {
     /**
+     * Sleep the calling thread quietly and suppress any interruption.
+     * @param millis time to sleep
+     */
+    public static void sleepQuietly(long millis)
+    {
+        try
+        {
+            Thread.sleep(millis);
+        }
+        catch (InterruptedException e)
+        {
+            System.out.println("Sleep quietly interrupted.");
+        }
+    }
+    /**
      * Converts the byte array containing 16-bit samples into a float array
      *
      * @param bytes containing 16-bit samples

@@ -28,9 +28,9 @@ import thumbdv.message.PacketField;
 /**
  * Encode speech response
  */
-public class EncodeSpeechResponse extends AmbeResponse
+public class EncodeAmbeResponse extends AmbeResponse
 {
-    public EncodeSpeechResponse(byte[] message)
+    public EncodeAmbeResponse(byte[] message)
     {
         super(message);
     }
@@ -61,6 +61,6 @@ public class EncodeSpeechResponse extends AmbeResponse
     @Override
     public String toString()
     {
-        return "ENCODED SPEECH: " + toHex(getMessage());
+        return "ENCODED AMBE: " + toHex(getMessage());
     }
 }

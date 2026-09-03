@@ -20,38 +20,49 @@
  *
  */
 
-package thumbdv.message.response;
+package thumbdv.message.request;
 
+import jmbe.binary.BinaryFrame;
 import thumbdv.message.PacketField;
+import thumbdv.message.type.Compander;
+import thumbdv.message.type.InterfaceConfiguration;
+import thumbdv.message.type.UartBaudRate;
+import thumbdv.message.type.VocoderRate;
 
 /**
- * Set packet mode response
+ * Reset request packet with configuration values
  */
-public class SetPacketModeResponse extends AmbeResponse
+public class ResetWithConfigRequestTest extends AmbeRequest
 {
-    public SetPacketModeResponse(byte[] message)
+    /**
+     * Constructs an instance
+     */
+    public ResetWithConfigRequestTest()
     {
-        super(message);
     }
 
     @Override
     public PacketField getType()
     {
-        return PacketField.PKT_CODEC_STOP;
+        return PacketField.PKT_RESET_SOFT_CONFIG;
     }
 
-    /**
-     * Success or fail
-     */
-    public boolean isSuccessful()
+    @Override
+    public byte[] getData()
     {
-        byte[] payload = getPayload();
-        return payload != null && payload.length == 1 && payload[0] == 0;
+        byte[] data = createMessage(7, getType());
+        data[5] = (byte)0x05; //Interface
+        data[6] = (byte)0x21; //Vocoder rate 33 (0x21)
+        data[7] = (byte)0x00;
+        data[8] = (byte)0x0F;
+        data[9] = (byte)0x3F;
+        data[10] = (byte)0x00;
+        return data;
     }
 
     @Override
     public String toString()
     {
-        return "SET PACKET MODE " + (isSuccessful() ? "SUCCESSFUL" : "**FAILED** " + toHex(getMessage()));
+        return "RESET WITH CONFIG INTERFACE - CUSTOM: " + toHex(getData());
     }
 }

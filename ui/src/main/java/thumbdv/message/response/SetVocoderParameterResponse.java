@@ -46,8 +46,7 @@ public class SetVocoderParameterResponse extends AmbeResponse
     public boolean isSuccessful()
     {
         byte[] payload = getPayload();
-
-        return payload != null && payload.length ==3 && payload[0] == 0;
+        return payload != null && payload.length > 0 && payload[0] == 0;
     }
 
     @Override
@@ -55,11 +54,11 @@ public class SetVocoderParameterResponse extends AmbeResponse
     {
         if(isSuccessful())
         {
-            return "SET VOCODER RATE SUCCESSFUL";
+            return "SET VOCODER PARAMETERS SUCCESSFUL";
         }
         else
         {
-            return "SET VOCODER RATE **FAILED** - RESPONSE: " + toHex(getMessage());
+            return "SET VOCODER PARAMETERS **FAILED** - RESPONSE: " + toHex(getMessage());
         }
     }
 }

@@ -39,6 +39,24 @@ public abstract class AmbeRequest extends AmbeMessage
     public abstract byte[] getData();
 
     /**
+     * Indicates if the request is an audio encode request.
+     * @return true if audio encode or false otherwise.
+     */
+    public boolean isAudioEncode()
+    {
+        return false;
+    }
+
+    /**
+     * Indicates if the request is an audio decode request.
+     * @return true if audio decode or false otherwise.
+     */
+    public boolean isAudioDecode()
+    {
+        return false;
+    }
+
+    /**
      * Creates a byte array of the specified length plus 4 packet header bytes with packet start, length and control
      * bytes filled in.
      *

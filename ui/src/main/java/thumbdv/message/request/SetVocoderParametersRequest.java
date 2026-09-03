@@ -55,7 +55,7 @@ public class SetVocoderParametersRequest extends AmbeRequest
     @Override
     public byte[] getData()
     {
-        byte[] data = createMessage(14, getType());
+        byte[] data = createMessage(13, getType());
         data[PAYLOAD_START_INDEX + 1] = (byte)(mWord0 >> 8 & 0xFF);
         data[PAYLOAD_START_INDEX + 2] = (byte)(mWord0 & 0xFF);
         data[PAYLOAD_START_INDEX + 3] = (byte)(mWord1 >> 8 & 0xFF);

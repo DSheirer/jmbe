@@ -24,11 +24,10 @@ package thumbdv.message;
 
 import thumbdv.message.response.AmbeResponse;
 import thumbdv.message.response.DecodeSpeechResponse;
-import thumbdv.message.response.EncodeSpeechResponse;
+import thumbdv.message.response.EncodeAmbeResponse;
 import thumbdv.message.response.GetOrReadConfigResponse;
 import thumbdv.message.response.InitializeCodecResponse;
 import thumbdv.message.response.ProductIdResponse;
-import thumbdv.message.response.ReadConfigResponse;
 import thumbdv.message.response.ReadyResponse;
 import thumbdv.message.response.SetChannelFormatResponse;
 import thumbdv.message.response.SetChannelResponse;
@@ -94,7 +93,7 @@ public class AmbeResponseMessageFactory
             }
             else if(data[INDEX_PACKET_TYPE] == CHANNEL_PACKET)
             {
-                return new EncodeSpeechResponse(data);
+                return new EncodeAmbeResponse(data);
             }
             else if(data[INDEX_PACKET_TYPE] == SPEECH_PACKET)
             {

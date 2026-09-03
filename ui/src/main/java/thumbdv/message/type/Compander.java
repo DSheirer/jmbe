@@ -27,8 +27,8 @@ public enum Compander
     /**
      * Note: when MSB is set to off, the LSB (uLAW/aLAW select) has to be set to 1, otherwise the soft reset doesn't take.
      */
-    OFF(1),
-    ON_U_LAW(2),
+    OFF(0),
+    ON_U_LAW(1),
     ON_A_LAW(3),
     UNKNOWN(-1);
 
@@ -64,8 +64,8 @@ public enum Compander
     {
         return switch(value)
         {
-            case 0, 1 -> OFF;
-            case 2 -> ON_U_LAW;
+            case 0, 2 -> OFF;
+            case 1 -> ON_U_LAW;
             case 3 -> ON_A_LAW;
             default -> UNKNOWN;
         };

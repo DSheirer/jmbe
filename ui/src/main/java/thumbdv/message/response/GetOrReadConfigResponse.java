@@ -23,9 +23,9 @@
 package thumbdv.message.response;
 
 import thumbdv.message.AmbeMessage;
+import thumbdv.message.PacketField;
 import thumbdv.message.type.Compander;
 import thumbdv.message.type.InterfaceConfiguration;
-import thumbdv.message.PacketField;
 import thumbdv.message.type.UartBaudRate;
 import thumbdv.message.type.VocoderRate;
 
@@ -34,15 +34,21 @@ import thumbdv.message.type.VocoderRate;
  */
 public class GetOrReadConfigResponse extends AmbeResponse
 {
-    private static final int[] INTERFACE_SELECTION = new int[] { 0, 1, 2 };
-    private static final int DTX_ENABLE = 3;
-    private static final int NOISE_SUPPRESSOR_ENABLE = 5;
-    private static final int[] COMPANDER = new int[] { 6, 7 };
-    private static final int[] VOCODER_RATE = new int[] { 8, 9, 10, 11, 12, 13 };
-    private static final int ECHO_CANCELLER_ENABLE = 14;
-    private static final int ECHO_SUPPRESSOR_ENABLE = 15;
-    private static final int[] UART_BAUD_RATE = new int[] { 16, 17, 18 };
-    private static final int PARITY_ENABLE = 20;
+    //Bit indices are in order MSB to LSB.  The ICD table shows reverse, LSB to MSB order.
+    private static final int[] COMPANDER = new int[] { 0, 1 };
+    private static final int NOISE_SUPPRESSOR_ENABLE = 2;
+    //Bit 3 must always be zero.
+    private static final int DTX_ENABLE = 4;
+    private static final int[] INTERFACE_SELECTION = new int[] { 5, 6, 7 };
+
+    private static final int ECHO_SUPPRESSOR_ENABLE = 8;
+    private static final int ECHO_CANCELLER_ENABLE = 9;
+    private static final int[] VOCODER_RATE = new int[] { 10, 11, 12, 13, 14, 15 };
+
+    //Bit 16-18 Reserved
+    private static final int PARITY_ENABLE = 19;
+    //Bit 20 Reserved
+    private static final int[] UART_BAUD_RATE = new int[] { 21, 22, 23 };
 
     public GetOrReadConfigResponse(byte[] message)
     {

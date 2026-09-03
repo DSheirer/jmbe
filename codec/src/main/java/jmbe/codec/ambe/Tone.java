@@ -206,6 +206,14 @@ public enum Tone
     }
 
     /**
+     * Value of the tone entry as a byte value suitable for a vocoder packet.
+     * @return value.
+     */
+    public byte getValue()
+    {
+        return (byte)(mValue & 0xFF);
+    }
+    /**
      * Frequency 1 in Hertz
      */
     public double getFrequency1()

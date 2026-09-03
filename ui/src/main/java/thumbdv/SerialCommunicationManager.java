@@ -23,7 +23,9 @@ import com.fazecast.jSerialComm.SerialPort;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -33,7 +35,9 @@ import org.slf4j.LoggerFactory;
 import thumbdv.message.AmbeMessage;
 import thumbdv.message.AmbeResponseMessageFactory;
 import thumbdv.message.request.AmbeRequest;
+import thumbdv.message.request.FlushRequest;
 import thumbdv.message.response.AmbeResponse;
+import thumbdv.util.Utils;
 
 /**
  * Manages communication with the AMBE-3000R USB device and provides asynchronous request/response handling.
@@ -62,10 +66,14 @@ public class SerialCommunicationManager
      * Submit queue is fixed to 2x requests in play at a time.  The ICD indicates that the AMBE-3000 has input buffer
      * capacity to hold 2x requests.
      */
-    private final BlockingQueue<AsyncRequest> mSubmitQueue = new ArrayBlockingQueue<>(2);
+    private final List<AsyncRequest> mPendingQueue = new ArrayList<>();
     private final SerialPort mSerialPort;
-    private SendProcessor mSendProcessor;
-    private ReceiveProcessor mReceiveProcessor;
+    private Processor mProcessor;
+    private OutputStream mOutputStream;
+    private InputStream mInputStream;
+    private int mPendingEncode = 0;
+    private int mPendingDecode = 0;
+    private long mLastSendTimestamp = 0;
 
     /**
      * Constructs an instance of SerialCommunicationManager using the specified serial port.
@@ -93,11 +101,10 @@ public class SerialCommunicationManager
         if(mSerialPort.isOpen())
         {
             LOG.info("Serial port opened. Starting send and receive threads.");
-            mReceiveProcessor = new ReceiveProcessor(mSerialPort.getInputStreamWithSuppressedTimeoutExceptions());
-            mReceiveProcessor.start();
-
-            mSendProcessor = new SendProcessor(mSerialPort.getOutputStream());
-            mSendProcessor.start();
+            mInputStream = mSerialPort.getInputStreamWithSuppressedTimeoutExceptions();
+            mOutputStream = mSerialPort.getOutputStream();
+            mProcessor = new Processor();
+            mProcessor.start();
         }
         else
         {
@@ -122,16 +129,10 @@ public class SerialCommunicationManager
      */
     public void close()
     {
-        if(mSendProcessor != null)
+        if(mProcessor != null)
         {
-            mSendProcessor.end();
-            mSendProcessor = null;
-        }
-
-        if(mReceiveProcessor != null)
-        {
-            mReceiveProcessor.end();
-            mReceiveProcessor = null;
+            mProcessor.end();
+            mProcessor = null;
         }
 
         if(mSerialPort.isOpen())
@@ -216,51 +217,160 @@ public class SerialCommunicationManager
     }
 
     /**
+     * Reads a response from the serial port and completes the oldest async request in the pending queue.
+     */
+    private void processResponse() throws IOException
+    {
+        int read = 0, total = 0;
+
+        while(read >= 0 && total < 4)
+        {
+            read = mInputStream.read(mReceiveBuffer, total, 4 - total);
+            total += read;
+        }
+
+        LOG.info("...Processing response: " + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, total)));
+
+        if(total == 4 && mReceiveBuffer[0] == PACKET_START)
+        {
+            int length = (0xFF & mReceiveBuffer[1]) << 8;
+            length += (0xFF & mReceiveBuffer[2]);
+
+            read = 0;
+            total = 0;
+
+            while(read >= 0 && total < length)
+            {
+                read = mInputStream.read(mReceiveBuffer, 4 + read, length - read);
+                total += read;
+            }
+
+            if(total == length)
+            {
+                AmbeResponse response = AmbeResponseMessageFactory.getMessage(Arrays.copyOf(mReceiveBuffer, length + 4));
+
+                if(!mPendingQueue.isEmpty())
+                {
+                    AsyncRequest pending = mPendingQueue.remove(0);
+
+                    if(pending.getRequest().isAudioDecode())
+                    {
+                        mPendingDecode--;
+                    }
+                    else if(pending.getRequest().isAudioEncode())
+                    {
+                        mPendingEncode--;
+                    }
+
+                    pending.complete(response);
+                }
+                else
+                {
+                    LOG.info("Received response with no pending async requests: " + response);
+                }
+            }
+            else
+            {
+                LOG.error("Unexpected packet read byte count: " + read + " - expected: " + length);
+            }
+        }
+        else if(read > 0)
+        {
+            long skipped = mInputStream.skip(mInputStream.available());
+            LOG.error("Unrecognized packet fragment [" + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, read)) + "] skipped [" + skipped + "] bytes remaining in the input stream to clear the buffer.");
+        }
+    }
+
+    private void write(AmbeRequest request) throws IOException
+    {
+        mOutputStream.write(request.getData());
+    }
+
+    /**
      * Threaded processor for sending requests to the serial port and managing the total number of requests in play at
      * any given time..
      */
-    public class SendProcessor extends Thread
+    public class Processor extends Thread
     {
-        private final OutputStream mOutputStream;
         private boolean mRunning = true;
 
         /**
          * Constructs an instance.
-         *
-         * @param outputStream from the serial port.
          */
-        public SendProcessor(OutputStream outputStream)
+        public Processor()
         {
-            mOutputStream = outputStream;
         }
 
         @Override
         public void run()
         {
-            LOG.info("Send thread running ... ");
-
             while(mRunning)
             {
                 try
                 {
-                    //Blocking call will wait until a request is available.
+                    //Blocking call waits until a request is available.
                     AsyncRequest request = mRequestQueue.take();
 
-                    //Blocking call will wait until the submit queue has space.  This places a limit of 2x requests active
-                    // at a time.  The ICD indicates that the AMBE-3000 has input buffer capacity for two requests.
-                    mSubmitQueue.put(request);
+                    long elapsed = System.currentTimeMillis() - mLastSendTimestamp;
 
-                    try
+                    if(elapsed < 20)
                     {
-                        LOG.info("... Sending:" + request.getRequest());
-                        mOutputStream.write(request.getRequest().getData());
+                        try
+                        {
+                            LOG.info("Sleeping: " + (20 - elapsed));
+                            Thread.sleep(20 - elapsed);
+                        }
+                        catch (InterruptedException e)
+                        {
+                            LOG.error("Send delay loop interrupted");
+                        }
                     }
-                    catch(IOException ioe)
+
+                    if(request.getRequest() instanceof FlushRequest)
                     {
-                        LOG.error("Error while sending", ioe);
-                        //If the request fails, remove it from the queue and signal the future with the exception.
-                        mSubmitQueue.remove(request);
-                        request.getFuture().completeExceptionally(ioe);
+                        shutdown();
+                    }
+                    else
+                    {
+                        try
+                        {
+                            mLastSendTimestamp = System.currentTimeMillis();
+                            LOG.info("... Sending: " + AmbeMessage.toHex(request.getRequest().getData()) + " AS:" + request.getRequest());
+                            write(request.getRequest());
+                            mPendingQueue.add(request);
+
+                            if(request.getRequest().isAudioEncode())
+                            {
+                                mPendingEncode++;
+
+                                if(mPendingEncode >= 2)
+                                {
+                                    LOG.info("Pending Encode: " + mPendingEncode + " - requesting response");
+                                    processResponse();
+                                }
+                            }
+                            else if(request.getRequest().isAudioDecode())
+                            {
+                                mPendingDecode++;
+
+                                if(mPendingDecode >= 2)
+                                {
+                                    LOG.info("Pending Decode: " + mPendingDecode + " - requesting response");
+                                    processResponse();
+                                }
+                            }
+                            else //Control requests
+                            {
+                                processResponse();
+                            }
+                        }
+                        catch(IOException ioe)
+                        {
+                            LOG.error("Error while sending", ioe);
+                            //If the request fails, remove it from the queue and signal the future with the exception.
+                            mPendingQueue.remove(request);
+                            request.getFuture().completeExceptionally(ioe);
+                        }
                     }
                 }
                 catch(InterruptedException ie)
@@ -273,6 +383,35 @@ public class SerialCommunicationManager
             LOG.info("Send thread now stopped");
         }
 
+        private void shutdown()
+        {
+            LOG.info("Shutting down ...");
+            mRunning = false;
+
+            int read = 1;
+
+            while(read > 0)
+            {
+                try
+                {
+                    read = mInputStream.read(mReceiveBuffer);
+
+                    if(read > 0)
+                    {
+                        LOG.info("Shutdown Flushing Read: " + AmbeRequest.toHex(Arrays.copyOf(mReceiveBuffer, read)));
+                    }
+                    else
+                    {
+                        LOG.info("Shutdown - no remaining bytes to read: " + read);
+                    }
+                }
+                catch(IOException ioe)
+                {
+                    LOG.error("Error while sending", ioe);
+                }
+            }
+        }
+
         /**
          * Stops the send processor.
          */
@@ -280,7 +419,7 @@ public class SerialCommunicationManager
         {
             mRunning = false;
 
-            SendProcessor.this.interrupt();
+            Processor.this.interrupt();
 
             if(mOutputStream != null)
             {
@@ -292,117 +431,6 @@ public class SerialCommunicationManager
                 {
                     LOG.error("Error closing serial port output stream", ioe);
                 }
-            }
-        }
-    }
-
-    /**
-     * Threaded processor for processing received data from the serial port.
-     */
-    public class ReceiveProcessor extends Thread
-    {
-        private final InputStream mInputStream;
-        private boolean mRunning = true;
-
-        /**
-         * Constructs an instance.
-         *
-         * @param inputStream to read from the serial port.
-         */
-        public ReceiveProcessor(InputStream inputStream)
-        {
-            mInputStream = inputStream;
-        }
-
-        @Override
-        public void run()
-        {
-            LOG.info("Receive thread running ... ");
-
-            while(mRunning)
-            {
-                try
-                {
-                    int read = 0, total = 0;
-
-                    while(read >= 0 && total < 4)
-                    {
-                        read = mInputStream.read(mReceiveBuffer, total, 4 - total);
-                        total += read;
-                    }
-
-                    if(total == 4 && mReceiveBuffer[0] == PACKET_START)
-                    {
-                        int length = (0xFF & mReceiveBuffer[1]) << 8;
-                        length += (0xFF & mReceiveBuffer[2]);
-
-                        read = 0;
-                        total = 0;
-
-                        while(read >= 0 && total < length)
-                        {
-                            read = mInputStream.read(mReceiveBuffer, 4 + read, length - read);
-                            total += read;
-                        }
-
-                        if(total == length)
-                        {
-                            AmbeResponse response = AmbeResponseMessageFactory
-                                    .getMessage(Arrays.copyOf(mReceiveBuffer, length + 4));
-
-                            LOG.info("Received response: " + response);
-
-                            AsyncRequest request = mSubmitQueue.poll();
-
-                            if(request != null)
-                            {
-                                request.complete(response);
-                            }
-                            else
-                            {
-                                LOG.error("Received response for unknown request: " + response);
-                            }
-                        }
-                        else
-                        {
-                            LOG.error("Unexpected packet read byte count: " + read + " - expected: " + length);
-                        }
-                    }
-                    else if(read > 0)
-                    {
-                        long skipped = mInputStream.skip(mInputStream.available());
-                        LOG.error("Unrecognized packet fragment [" + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, read)) +
-                                "] skipped [" + skipped + "] bytes remaining in the input stream to clear the buffer.");
-                    }
-                    else
-                    {
-                        LOG.info("Input stream closed - read:" + read + " total:" + total);
-                    }
-                }
-                catch(IOException ioe)
-                {
-                    LOG.error("Error reading from serial port", ioe);
-                }
-            }
-
-            LOG.info("Receive thread now stopped");
-        }
-
-        /**
-         * Stops the send processor.
-         */
-        public void end()
-        {
-            mRunning = false;
-            ReceiveProcessor.this.interrupt();
-
-            try
-            {
-                mInputStream.close();
-            }
-            catch(IOException ioe)
-            {
-                LOG.error("Error closing serial port input stream", ioe);
             }
         }
     }
