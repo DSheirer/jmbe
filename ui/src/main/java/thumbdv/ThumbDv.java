@@ -34,17 +34,24 @@ import jmbe.codec.ambe.ToneParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import thumbdv.message.AmbeMessage;
+import thumbdv.message.InitializeOption;
 import thumbdv.message.request.AmbeRequest;
 import thumbdv.message.request.DecodeAmbeRequest;
 import thumbdv.message.request.EncodeAudioRequest;
 import thumbdv.message.request.FlushRequest;
 import thumbdv.message.request.GetConfigRequest;
+import thumbdv.message.request.InitializeCodecRequest;
 import thumbdv.message.request.ProductIdRequest;
+import thumbdv.message.request.ResetWithConfigRequest;
 import thumbdv.message.request.SetPacketModeRequest;
 import thumbdv.message.request.SetVocoderParametersRequest;
 import thumbdv.message.request.VersionRequest;
 import thumbdv.message.response.AmbeResponse;
+import thumbdv.message.response.DecodeSpeechResponse;
 import thumbdv.message.response.EncodeAmbeResponse;
+import thumbdv.message.type.InterfaceConfiguration;
+import thumbdv.message.type.VocoderRate;
+import thumbdv.util.Utils;
 
 /**
  * Northwest Digital Radio (NWDR) ThumbDv dongle.
@@ -177,57 +184,40 @@ public class ThumbDv implements AutoCloseable
             response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
             LOG.info("Original Config Response: " + response);
 
-//            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, VocoderRate.RATE_33);
-//            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
-//            LOG.info("Reset Response: " + response);
+            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, VocoderRate.RATE_33);
+            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
+            LOG.info("Reset Response: " + response);
 
-//            request = new SetVocoderRequest(VocoderRate.RATE_33);
-//            response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
-//            LOG.info("Set Vocoder Response: " + response);
-
-//            AmbeResponse response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
-//            LOG.info("Startup Configuration Response: " + response);
-//
-//            ResetWithConfigRequest configRequest = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART,
-//                    VocoderRate.RATE_33); //DMR, NXDN and P25-2
-//            configRequest.setUartBaudRate(UartBaudRate.RATE_460_800);
-//            configRequest.setCompander(Compander.OFF);
-//            configRequest.setDTXEnabled(false);
-//            configRequest.setEchoCancelerEnabled(false);
-//            configRequest.setEchoSuppressorEnabled(false);
-//            configRequest.setNoiseSuppressorEnabled(true);
-//            configRequest.setParityEnabled(true);
-//
-//            response = thumbDv.send(configRequest).get(2, TimeUnit.SECONDS);
-//            LOG.info("Soft Reset Config Response: " + response);
-//
             //Confirm that the settings take effect ...
             response = thumbDv.send(new GetConfigRequest()).get(2, TimeUnit.SECONDS);
             LOG.info("Config Verification Response: " + response);
 
-            response = thumbDv.send(new SetVocoderParametersRequest(0x0431, 0x0754, 0x2400, 0x0000, 0x0000, 0x6F48 )).get(2, TimeUnit.SECONDS);
-            LOG.info("Custom Vocoder Response: " + response);
+            response = thumbDv.send(new InitializeCodecRequest(InitializeOption.ENCODER_AND_DECODER)).get(2, TimeUnit.SECONDS);
+            LOG.info("Initialize Codec: " + response);
+
+//            response = thumbDv.send(new SetVocoderParametersRequest(0x0431, 0x0754, 0x2400, 0x0000, 0x0000, 0x6F48 )).get(2, TimeUnit.SECONDS);
+//            LOG.info("Custom Vocoder Response: " + response);
 
             response = thumbDv.send(new SetPacketModeRequest()).get(2, TimeUnit.SECONDS);
             LOG.info("Set Packet Mode: " + response);
 
-            String[] frames = {"0E46122323067C60F8", "0E469433C1067CF1BC", "0E46122B23067C60F8", "0E67162BE08874E2B4",
-                    "0E46163BE1067CF1BC", "0E46122B23067C60F8", "0A06163BE00A5C303E", "0E46122B23067C60F8", "0E46163BE1847CE1FC",
-                    "0E46122B23067C60F8"};
-
-            List<byte[]> frameData = new ArrayList<>();
-
-            for(String frame : frames)
-            {
-                byte[] bytes = new byte[frame.length() / 2];
-                for(int x = 0; x < frame.length(); x += 2)
-                {
-                    String hex = frame.substring(x, x + 2);
-                    bytes[x / 2] = (byte) (0xFF & Integer.parseInt(hex, 16));
-                }
-
-                frameData.add(bytes);
-            }
+//            String[] frames = {"0E46122323067C60F8", "0E469433C1067CF1BC", "0E46122B23067C60F8", "0E67162BE08874E2B4",
+//                    "0E46163BE1067CF1BC", "0E46122B23067C60F8", "0A06163BE00A5C303E", "0E46122B23067C60F8", "0E46163BE1847CE1FC",
+//                    "0E46122B23067C60F8"};
+//
+//            List<byte[]> frameData = new ArrayList<>();
+//
+//            for(String frame : frames)
+//            {
+//                byte[] bytes = new byte[frame.length() / 2];
+//                for(int x = 0; x < frame.length(); x += 2)
+//                {
+//                    String hex = frame.substring(x, x + 2);
+//                    bytes[x / 2] = (byte) (0xFF & Integer.parseInt(hex, 16));
+//                }
+//
+//                frameData.add(bytes);
+//            }
 
 //            List<byte[]> ambeFrames = new ArrayList<>();
 //
@@ -254,9 +244,13 @@ public class ThumbDv implements AutoCloseable
             request = new EncodeAudioRequest(new float[160]);
 
             LOG.info("Sending speech/audio requests");
-            futures.add(thumbDv.send(request));
-            futures.add(thumbDv.send(request));
-            futures.add(thumbDv.send(request));
+
+            for(int x = 0; x < 50; x++)
+            {
+                Utils.sleepQuietly(20);
+                LOG.info("Sending: " + x);
+                futures.add(thumbDv.send(request));
+            }
 
 //            for(byte[] ambeFrame: frameData)
 //            {
@@ -265,8 +259,6 @@ public class ThumbDv implements AutoCloseable
 //                futures.add(thumbDv.send(new DecodeAmbeRequest(ambeFrame)));
 //            }
 //
-            LOG.info("Sending flush request ");
-            thumbDv.send(new FlushRequest());
 
             List<byte[]> ambeFrames = new ArrayList<>();
 
@@ -294,11 +286,36 @@ public class ThumbDv implements AutoCloseable
 
             LOG.info("*** Processing [" + ambeFrames.size() + "] frames");
 
+            futures.clear();
+
+            LOG.info("Switching to decode requests ...");
             for(byte[] ambeFrame : ambeFrames)
             {
-                LOG.info("Frame: " + Arrays.toString(ambeFrame));
+//                LOG.info("Frame: " + Arrays.toString(ambeFrame));
                 AMBEFrame frame = new AMBEFrame(ambeFrame);
-                LOG.info("Errors: " + Arrays.toString(frame.getErrors()));
+//                LOG.info("Errors: " + Arrays.toString(frame.getErrors()));
+                LOG.info("Type: " + frame.getFrameType() + " FF:" + frame.getFundamentalFrequency() + " B:" + Arrays.toString(frame.getB()));
+
+                request = new DecodeAmbeRequest(ambeFrame);
+                LOG.info("Sending: " + request);
+                futures.add(thumbDv.send(request));
+                Utils.sleepQuietly(20);
+            }
+
+            LOG.info("Sending flush request ");
+            thumbDv.send(new FlushRequest());
+
+            for(Future<AmbeResponse> future : futures)
+            {
+                try
+                {
+                    response = future.get(5, TimeUnit.SECONDS);
+                    LOG.info("Decode Response: " + response);
+                }
+                catch(Exception e)
+                {
+                    LOG.error("Aborted timeout wait: " + e.getMessage());
+                }
             }
 
 

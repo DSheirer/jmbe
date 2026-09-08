@@ -168,6 +168,11 @@ public class AMBEFrame
         }
     }
 
+    public int[] getB()
+    {
+        return mB;
+    }
+
     /**
      * Frame type for this frame
      */

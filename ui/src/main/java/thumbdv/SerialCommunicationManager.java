@@ -60,7 +60,7 @@ public class SerialCommunicationManager
     /**
      * Asynchronous request queue is sized to hold 20 requests at a time.
      */
-    private final BlockingQueue<AsyncRequest> mRequestQueue = new ArrayBlockingQueue<>(20);
+    private final BlockingQueue<AsyncRequest> mRequestQueue = new ArrayBlockingQueue<>(25);
 
     /**
      * Submit queue is fixed to 2x requests in play at a time.  The ICD indicates that the AMBE-3000 has input buffer
@@ -219,7 +219,7 @@ public class SerialCommunicationManager
     /**
      * Reads a response from the serial port and completes the oldest async request in the pending queue.
      */
-    private void processResponse() throws IOException
+    private boolean processResponse() throws IOException
     {
         int read = 0, total = 0;
 
@@ -229,7 +229,7 @@ public class SerialCommunicationManager
             total += read;
         }
 
-        LOG.info("...Processing response: " + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, total)));
+//        LOG.info("...Processing response: " + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, total)));
 
         if(total == 4 && mReceiveBuffer[0] == PACKET_START)
         {
@@ -263,6 +263,8 @@ public class SerialCommunicationManager
                     }
 
                     pending.complete(response);
+
+                    return true;
                 }
                 else
                 {
@@ -279,6 +281,8 @@ public class SerialCommunicationManager
             long skipped = mInputStream.skip(mInputStream.available());
             LOG.error("Unrecognized packet fragment [" + AmbeMessage.toHex(Arrays.copyOf(mReceiveBuffer, read)) + "] skipped [" + skipped + "] bytes remaining in the input stream to clear the buffer.");
         }
+
+        return false;
     }
 
     private void write(AmbeRequest request) throws IOException
@@ -301,6 +305,25 @@ public class SerialCommunicationManager
         {
         }
 
+        private void pause()
+        {
+            long elapsed = System.currentTimeMillis() - mLastSendTimestamp;
+
+            if(elapsed < 20)
+            {
+                try
+                {
+                    Thread.sleep(20 - elapsed);
+                }
+                catch (InterruptedException e)
+                {
+                    LOG.error("Send delay loop interrupted");
+                }
+            }
+
+            mLastSendTimestamp = System.currentTimeMillis();
+        }
+
         @Override
         public void run()
         {
@@ -311,21 +334,6 @@ public class SerialCommunicationManager
                     //Blocking call waits until a request is available.
                     AsyncRequest request = mRequestQueue.take();
 
-                    long elapsed = System.currentTimeMillis() - mLastSendTimestamp;
-
-                    if(elapsed < 20)
-                    {
-                        try
-                        {
-                            LOG.info("Sleeping: " + (20 - elapsed));
-                            Thread.sleep(20 - elapsed);
-                        }
-                        catch (InterruptedException e)
-                        {
-                            LOG.error("Send delay loop interrupted");
-                        }
-                    }
-
                     if(request.getRequest() instanceof FlushRequest)
                     {
                         shutdown();
@@ -334,29 +342,33 @@ public class SerialCommunicationManager
                     {
                         try
                         {
-                            mLastSendTimestamp = System.currentTimeMillis();
-                            LOG.info("... Sending: " + AmbeMessage.toHex(request.getRequest().getData()) + " AS:" + request.getRequest());
+//                            LOG.info("... Sending: " + AmbeMessage.toHex(request.getRequest().getData()) + " AS:" + request.getRequest());
                             write(request.getRequest());
                             mPendingQueue.add(request);
+                            pause();
 
                             if(request.getRequest().isAudioEncode())
                             {
                                 mPendingEncode++;
 
-                                if(mPendingEncode >= 2)
+                                boolean responseProcessed = true;
+
+                                while(mPendingEncode >= 2 && responseProcessed)
                                 {
-                                    LOG.info("Pending Encode: " + mPendingEncode + " - requesting response");
-                                    processResponse();
+//                                    LOG.info("Pending Encode: " + mPendingEncode + " - requesting response");
+                                    responseProcessed = processResponse();
                                 }
                             }
                             else if(request.getRequest().isAudioDecode())
                             {
                                 mPendingDecode++;
 
-                                if(mPendingDecode >= 2)
+                                boolean responseProcessed = true;
+
+                                while(mPendingDecode >= 2 && responseProcessed)
                                 {
                                     LOG.info("Pending Decode: " + mPendingDecode + " - requesting response");
-                                    processResponse();
+                                    responseProcessed = processResponse();
                                 }
                             }
                             else //Control requests

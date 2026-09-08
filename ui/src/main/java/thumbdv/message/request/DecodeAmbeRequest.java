@@ -74,6 +74,12 @@ public class DecodeAmbeRequest extends AmbeRequest
     }
 
     @Override
+    public String toString()
+    {
+        return "DECODE AMBE REQUEST MSG:" + toHex(getData());
+    }
+
+    @Override
     public byte[] getData()
     {
         int offset = 4;
@@ -120,5 +126,7 @@ public class DecodeAmbeRequest extends AmbeRequest
 
             return data;
         }
+
+
     }
 }
