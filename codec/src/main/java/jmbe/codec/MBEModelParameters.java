@@ -19,6 +19,8 @@
 
 package jmbe.codec;
 
+import jmbe.codec.analysis.SpectralAmplitudeEnhancer;
+
 /**
  * Base Multi-Band Excitation (MBE) voice frame model parameters required to synthesize an audio frame.
  */
@@ -432,7 +434,20 @@ public abstract class MBEModelParameters
         mLocalEnergy = (0.95f * previousLocalEnergy) + (0.05f * RM[0]);
         mLocalEnergy = Math.max(mLocalEnergy, 10000.0f);
 
-        setEnhancedSpectralAmplitudes(enhancedSpectralAmplitudes);
+        float[] copy = spectralAmplitudes.clone();
+//        int order = 8; //4-10, 6 to start
+        int order = getL() / 3;//4-10, 6 to start
+        order = Math.min(order, 10);
+        order = Math.max(order, 4);
+        float gammaN = 1.0f; //0.6 to start
+        float gammaD = 2.2f; //0.8 to start
+        float strength = 1.0f; //0 to 1.0, 1.0 to start
+        copy = SpectralAmplitudeEnhancer.enhanceHighOrder(copy, getFundamentalFrequency(), order, gammaN, gammaD, strength);
+
+        int a = 0;
+
+//        setEnhancedSpectralAmplitudes(enhancedSpectralAmplitudes);
+        setEnhancedSpectralAmplitudes(copy);
         applyAdaptiveSmoothing(previousAmplitudeThreshold);
     }
 

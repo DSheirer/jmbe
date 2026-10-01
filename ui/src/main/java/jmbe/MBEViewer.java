@@ -720,9 +720,9 @@ public class MBEViewer extends VBox
             }
 
             List<byte[]> ambeAudioData = ThumbDv.decode(ambeFrameData, ThumbDv.AudioProtocol.DMR);
-            Path stereoOutput = Paths.get("/run/media/denny/T9/AMBE Research/both_output.wav");
-            Path monoJmbe = Paths.get("/run/media/denny/T9/AMBE Research/jmbe_output.wav");
-            Path monoAmbe = Paths.get("/run/media/denny/T9/AMBE Research/ambe3000_output.wav");
+            Path stereoOutput = Paths.get("/run/media/denny/T9/AMBE Research/output_both.wav");
+            Path monoJmbe = Paths.get("/run/media/denny/T9/AMBE Research/output_jmbe.wav");
+            Path monoAmbe = Paths.get("/run/media/denny/T9/AMBE Research/output_ambe3000.wav");
             Path csvAnalysis = Paths.get("/run/media/denny/T9/AMBE Research/spectrum_analysis.csv");
 
             LOG.info("Audio collected - JMBE: " + jmbeAudioData.size() + " AMBE:" + ambeAudioData.size());

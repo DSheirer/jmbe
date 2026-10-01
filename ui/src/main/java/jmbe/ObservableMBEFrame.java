@@ -19,7 +19,12 @@
 
 package jmbe;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.DecimalFormat;
+import java.util.Arrays;
 import jmbe.codec.MBEModelParameters;
 
 /**
@@ -72,24 +77,28 @@ public class ObservableMBEFrame
 
     public String getDescription()
     {
+
         StringBuilder sb = new StringBuilder();
         sb.append("Fundamental:").append(mModelParameters.getMBEFundamentalFrequency().getName());
         sb.append(" L Band Count:").append(mModelParameters.getL()).append("\n\n");
         double ambePowerScaleY = getAmbeAmplitudes()[0] / getJmbeAmplitudes()[0];
         sb.append("AMBE Power Adjustment Y: ").append(DECIMAL_FORMAT.format(ambePowerScaleY)).append("\n");
 
-        double[] ambeWeightOriginal = new double[mAmbeAmplitudes.length];
-        double[] ambeWeightScaled = new double[mAmbeAmplitudes.length];
+        double[] ambeWeightOriginal = new double[mAmbeAmplitudes.length + 1];
+        double[] ambeWeightScaled = new double[mAmbeAmplitudes.length + 1];
 
-        for(int i = 1; i < mAmbeAmplitudes.length; i++)
+        for(int i = 0; i < mAmbeAmplitudes.length; i++)
         {
             double unscaledAmplitude = mAmbeAmplitudes[i] / ambePowerScaleY;
-            ambeWeightOriginal[i] = unscaledAmplitude / mJmbeAmplitudes[i];
-            ambeWeightScaled[i] = ambeWeightOriginal[i] * ambePowerScaleY;
+            ambeWeightOriginal[i + 1] = unscaledAmplitude / mJmbeAmplitudes[i];
+            ambeWeightScaled[i + 1] = ambeWeightOriginal[i + 1] * ambePowerScaleY;
         }
+
+        float[] frequencies = new float[mAmbeAmplitudes.length + 1];
 
         for(int i = 0; i < mModelParameters.getVoicingDecisions().length; i++)
         {
+            frequencies[i] = (float)(i * (8000 * (mModelParameters.getFundamentalFrequency() / (2 * Math.PI))));
             sb.append(i).append(": ").append(mModelParameters.getVoicingDecisions()[i] ? "V " : "* ");
             sb.append(DECIMAL_FORMAT.format(i * (8000 * (mModelParameters.getFundamentalFrequency() / (2 * Math.PI)))));
             sb.append("\tAmp Orig:").append(DECIMAL_FORMAT.format(mModelParameters.getSpectralAmplitudes()[i]));
@@ -100,6 +109,98 @@ public class ObservableMBEFrame
             sb.append("\t  AWC:").append(DECIMAL_FORMAT.format(ambeWeightOriginal[i]));
             sb.append("\t AWS:").append(DECIMAL_FORMAT.format(ambeWeightScaled[i]));
             sb.append("\n");
+        }
+
+        //********************** start
+
+        /* Algorithm #105 and #106 - calculate RM0 and RM1 from amplitudes */
+        float[] RM = new float[2];
+
+        float[] spectralAmplitudes = mModelParameters.getSpectralAmplitudes();
+
+        int L = mModelParameters.getL();
+
+        for(int l = 1; l <= L; l++)
+        {
+            float amplitudesSquared = (float)Math.pow(spectralAmplitudes[l], 2);
+
+            /**
+             * Calculates the power spectrum or energy density of each frequency bin.
+             */
+            RM[0] += amplitudesSquared;
+
+            /**
+             * Google says: this calculates the phase-weighted power spectrum of each frequency bin.  This produces the
+             * net power contributed by components that are in-phase (0 degrees) versus out-of-phase (180 degrees),
+             * relative to a pure cosine reference baseline at the start of the sample window.
+             */
+            float d = mModelParameters.getFundamentalFrequency();
+            float e = mModelParameters.getFundamentalFrequency() * l;
+            float c = (float)Math.cos(getFundamentalFrequency() * l);
+            float b = amplitudesSquared * (float)Math.cos(getFundamentalFrequency() * l);
+            RM[1] += (amplitudesSquared * Math.cos(getFundamentalFrequency() * l));
+        }
+
+        float[] W = new float[L + 1];
+
+        float rm0squared = RM[0] * RM[0];
+        float rm1squared = RM[1] * RM[1];
+
+        /* Algorithm #107 - calculate enhancement weights (W) */
+
+        for(int l = 1; l <= mModelParameters.getL(); l++)
+        {
+            float zero96Pi = 0.96f * (float)Math.PI;
+            float numerator = 0.96f * (float)Math.PI * (rm0squared + rm1squared - (2.0f * RM[0] * RM[1] * (float)Math.cos(getFundamentalFrequency() * l)));
+            float denominator = (getFundamentalFrequency() * RM[0] * (rm0squared - rm1squared));
+            float small = numerator / denominator;
+            float brackets = (float) Math.pow(small, 0.25);
+            float weight = (float)Math.sqrt(spectralAmplitudes[l]) * brackets;
+            //Note: The 2003 ICD has "0.96 * PI" and the 2014 version only has "0.96".
+            float temp = (zero96Pi * (rm0squared + rm1squared -
+                    (2.0f * RM[0] * RM[1] * (float)Math.cos(getFundamentalFrequency() * l)))) /
+                    (getFundamentalFrequency() * RM[0] * (rm0squared - rm1squared));
+            W[l] = (float)(Math.sqrt(spectralAmplitudes[l]) * Math.pow(temp, 0.25));
+        }
+
+        //********************** end
+
+        StringBuilder sb2 = new StringBuilder();
+
+        sb2.append("Band,Voicing,Frequency,SAmp, Enh Samp, WO, WC, WS, AWO, AWS, JMBE Amp (dB), JMBE Enh Amp (dB), AMBE Amp (dB)\n");
+        for(int i = 0; i < mModelParameters.getVoicingDecisions().length; i++)
+        {
+            sb2.append(i).append(",");
+            sb2.append(mModelParameters.getVoicingDecisions()[i]).append(",");
+            sb2.append(frequencies[i]).append(",");
+            sb2.append(mModelParameters.getSpectralAmplitudes()[i]).append(",");
+            sb2.append(mModelParameters.getEnhancedSpectralAmplitudes()[i]).append(",");
+            sb2.append(mModelParameters.getWeightOriginal()[i]).append(",");
+            sb2.append(mModelParameters.getWeightEnhanced()[i]).append(",");
+            sb2.append(mModelParameters.getWeightScaled()[i]).append(",");
+            sb2.append(ambeWeightOriginal[i]).append(",");
+            sb2.append(ambeWeightScaled[i]).append(",");
+
+            if(i != 0)
+            {
+                sb2.append(mJmbeAmplitudes[i - 1]).append(",");
+                sb2.append(mJmbeEnhancedAmplitudes[i - 1]).append(",");
+                sb2.append(mAmbeAmplitudes[i - 1]).append("\n");
+            }
+            else
+            {
+                sb2.append("0,0,0\n");
+            }
+        }
+
+        try
+        {
+            Path csvAnalysis = Paths.get("/run/media/denny/T9/AMBE Research/frame_analysis.csv");
+            Files.write(csvAnalysis, sb2.toString().getBytes());
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
         }
 
         sb.append("\n\n");
@@ -192,7 +293,7 @@ public class ObservableMBEFrame
      */
     public float getFundamentalFrequency()
     {
-        return (float)(int)(mModelParameters.getFundamentalFrequency() * 8000 / (2 * Math.PI));
+        return (mModelParameters.getFundamentalFrequency() * (float)(8000 / (2 * Math.PI)));
     }
 
     /**

@@ -272,9 +272,6 @@ public enum IMBEFundamentalFrequency implements IFundamentalFrequency
         }
     }
 
-
-
-
     public int getL()
     {
         return mL;
@@ -311,7 +308,7 @@ public enum IMBEFundamentalFrequency implements IFundamentalFrequency
 
     public float getFrequencyHertz()
     {
-        return getFrequency() * 8000;
+        return 8000 * (getFrequency() / (2.0f * (float)Math.PI));
     }
 
     @Override
