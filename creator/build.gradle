@@ -4,7 +4,7 @@ plugins {
     id 'org.beryx.runtime' version '2.0.1'
 }
 
-//sourceCompatibility = '8'
+apply plugin: 'org.beryx.runtime'
 
 repositories {
     mavenCentral()
@@ -36,46 +36,25 @@ jar {
 /**
  * Beryx Runtime plugin - download OS specific JDK and creates a compact OS-specific creator image.
  */
+def libericaVersion = '17.0.20.1+1'
+def libericaUrl = { String platform, String ext = 'tar.gz' ->
+    "https://download.bell-sw.com/java/${libericaVersion}/bellsoft-jdk${libericaVersion}-${platform}.${ext}"
+}
+
 runtime {
-    targetPlatform("linux-arm32-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-linux-arm32-vfp-hflt.tar.gz")
-    }
+    targetPlatform("linux-arm32-v" + version)     { jdkHome = jdkDownload(libericaUrl('linux-arm32-vfp-hflt')) }
+    targetPlatform("linux-aarch64-v" + version)   { jdkHome = jdkDownload(libericaUrl('linux-aarch64')) }
+    targetPlatform("linux-x86_32-v" + version)    { jdkHome = jdkDownload(libericaUrl('linux-i586')) }
+    targetPlatform("linux-x86_64-v" + version)    { jdkHome = jdkDownload(libericaUrl('linux-amd64')) }
+    targetPlatform("osx-x86_64-v" + version)      { jdkHome = jdkDownload(libericaUrl('macos-amd64')) }
+    targetPlatform("osx-aarch64-v" + version)     { jdkHome = jdkDownload(libericaUrl('macos-aarch64')) }
+    targetPlatform("windows-aarch64-v" + version) { jdkHome = jdkDownload(libericaUrl('windows-aarch64', 'zip')) }
+    targetPlatform("windows-x86_64-v" + version)  { jdkHome = jdkDownload(libericaUrl('windows-amd64', 'zip')) }
+    targetPlatform("windows-x86_32-v" + version)  { jdkHome = jdkDownload(libericaUrl('windows-i586', 'zip')) }
 
-    targetPlatform("linux-aarch64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-linux-aarch64.tar.gz")
-    }
-
-    targetPlatform("linux-x86_32-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-linux-i586.tar.gz")
-    }
-
-    targetPlatform("linux-x86_64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-linux-amd64.tar.gz")
-    }
-
-    targetPlatform("osx-x86_64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-macos-amd64.tar.gz")
-    }
-
-    targetPlatform("osx-aarch64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-macos-aarch64.tar.gz")
-    }
-
-    targetPlatform("windows-aarch64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-windows-aarch64.zip")
-    }
-
-    targetPlatform("windows-x86_64-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-windows-amd64.zip")
-    }
-
-    targetPlatform("windows-x86_32-v" + version) {
-        jdkHome = jdkDownload("https://download.bell-sw.com/java/11.0.14.1+1/bellsoft-jdk11.0.14.1+1-windows-i586.zip")
-    }
-
+    // modules, additive, options, imageZip unchanged
     modules = ['jdk.crypto.ec','java.desktop','jdk.compiler','java.base','jdk.zipfs']
     additive = true
     options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
     imageZip = file("$buildDir/image/jmbe-creator.zip")
 }
-
