@@ -1,6 +1,6 @@
 /*
  * ******************************************************************************
- * Copyright (C) 2015-2019 Dennis Sheirer
+ * Copyright (C) 2015-2026 Dennis Sheirer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@ package jmbe.codec.ambe;
 
 import jmbe.binary.BinaryFrame;
 import jmbe.codec.FrameType;
+import jmbe.codec.ambe.ambePlus2.FundamentalFrequency;
+import jmbe.codec.ambe.tone.Tone;
+import jmbe.codec.ambe.tone.ToneParameters;
 import jmbe.edac.Golay23;
 import jmbe.edac.Golay24;
 import org.slf4j.Logger;
@@ -59,22 +62,30 @@ public class AMBEFrame
     private static final int[] VECTOR_U3_B1_LOW = {0};
     private static final int[] VECTOR_U3_B2_LOW = {1};
     private static final int[] VECTOR_U3_B0_LOW = {2, 3, 4};
-    private static final int[] VECTOR_U3_B3_LOW = {5};
-    private static final int[] VECTOR_U3_B4_LOW = {6, 7, 8};
+    private static final int[] VECTOR_U3_B4_LOW = {5, 6, 7}; //ICD uses incorrect bit indices
+    private static final int[] VECTOR_U3_B3_LOW = {8}; //ICD uses incorrect bit indices
     private static final int[] VECTOR_U3_B5_LOW = {9};
     private static final int[] VECTOR_U3_B6_LOW = {10};
     private static final int[] VECTOR_U3_B7_LOW = {11};
     private static final int[] VECTOR_U3_B8_LOW = {12, 13};
     private static final int[] VECTOR_U0_AD_HIGH = {6, 7, 8, 9, 10, 11};
-    private static final int[] VECTOR_U3_AD_LOW = {8};
+    //Tone frame AD(0) is u3 bit 4 (TIA-102.BABA-1 Table 10), index 9 counting from the MSB. Index 8 holds ID(0).
+    private static final int[] VECTOR_U3_AD_LOW = {9};
     private static final int[] VECTOR_U1_ID = {0, 1, 2, 3, 4, 5, 6, 7};
+    //Redundant copies of the tone ID (TIA-102.BABA-1 Table 10): u1(3..0) = ID(7..4), u2(10..7) = ID(3..0),
+    //u2(6..0) = ID(7..1), u3(13) = ID(0), u3(12..5) = ID(7..0)
+    private static final int[] VECTOR_U1_ID_HIGH_COPY = {8, 9, 10, 11};
+    private static final int[] VECTOR_U2_ID_LOW_COPY = {0, 1, 2, 3};
+    private static final int[] VECTOR_U2_ID_SHIFTED_COPY = {4, 5, 6, 7, 8, 9, 10};
+    private static final int[] VECTOR_U3_ID_LSB_COPY = {0};
+    private static final int[] VECTOR_U3_ID_COPY = {1, 2, 3, 4, 5, 6, 7, 8};
     private static final int U0_TONE_FRAME_VALUE = 63;
     private static final int U3_TONE_FRAME_VALUE = 0;
 
-    private BinaryFrame mFrame;
-    private AMBEFundamentalFrequency mFundamentalFrequency;
+    private final BinaryFrame mFrame;
+    private FundamentalFrequency mFundamentalFrequency;
     private FrameType mFrameType;
-    private int[] mErrors = new int[2];
+    private final int[] mErrors = new int[2];
     private Tone mTone;
     private int mToneAmplitude;
     private int[] mB;
@@ -125,7 +136,7 @@ public class AMBEFrame
         int b0 = (vectorC0.getInt(VECTOR_U0_B0_HIGH) << 3) + vectorC3.getInt(VECTOR_U3_B0_LOW);
         int errorCount = mErrors[0] + mErrors[1];
 
-        mFundamentalFrequency = AMBEFundamentalFrequency.fromValue(b0);
+        mFundamentalFrequency = FundamentalFrequency.fromValue(b0);
 
         //Process as either a tone frame or a voice frame.
         if(errorCount < 6 &&
@@ -144,7 +155,7 @@ public class AMBEFrame
             // frequency to W120 (erasure) which will cause a frame repeat sequence.
             if(mFrameType == FrameType.TONE)
             {
-                mFundamentalFrequency = AMBEFundamentalFrequency.W120;
+                mFundamentalFrequency = FundamentalFrequency.W120;
                 mFrameType = mFundamentalFrequency.getFrameType();
             }
 
@@ -161,11 +172,40 @@ public class AMBEFrame
 
         }
 
+        if(mFrameType == FrameType.TONE && AMBEChipResponse.isEnabled() && !isToneIdConsistent(vectorC1, vectorC2, vectorC3))
+        {
+            //The AMBE-3000R rejects a tone frame whose redundant tone ID copies disagree (INVALID DATA, repeat): with
+            //the chip response on, decode it as an erasure, which the chip model repeats
+            mFundamentalFrequency = FundamentalFrequency.W120;
+            mFrameType = mFundamentalFrequency.getFrameType();
+            mB = new int[]{120, 0, 0, 0, 0, 0, 0, 0, 0};
+        }
+
         if(mFrameType == FrameType.TONE)
         {
             mTone = Tone.fromValue(vectorC1.getInt(VECTOR_U1_ID));
             mToneAmplitude = (vectorC0.getInt(VECTOR_U0_AD_HIGH) << 1) + vectorC3.getInt(VECTOR_U3_AD_LOW);
         }
+    }
+
+    /**
+     * True when every redundant copy of the tone ID in u1, u2 and u3 equals the ID in u1(11..4). u2 and u3 are not
+     * error protected, so a bit error there leaves the copies disagreeing. Real DMR traffic: the chip flagged the one
+     * tone frame (of 31) with a disagreeing copy (u3, one bit) INVALID DATA and played the other 30 as tones.
+     */
+    private static boolean isToneIdConsistent(BinaryFrame u1, BinaryFrame u2, BinaryFrame u3)
+    {
+        int id = u1.getInt(VECTOR_U1_ID);
+        return u1.getInt(VECTOR_U1_ID_HIGH_COPY) == (id >> 4) &&
+            u2.getInt(VECTOR_U2_ID_LOW_COPY) == (id & 0xF) &&
+            u2.getInt(VECTOR_U2_ID_SHIFTED_COPY) == (id >> 1) &&
+            u3.getInt(VECTOR_U3_ID_LSB_COPY) == (id & 1) &&
+            u3.getInt(VECTOR_U3_ID_COPY) == id;
+    }
+
+    public int[] getB()
+    {
+        return mB;
     }
 
     /**
@@ -179,7 +219,7 @@ public class AMBEFrame
     /**
      * Fundamental frequency enumeration entry
      */
-    public AMBEFundamentalFrequency getFundamentalFrequency()
+    public FundamentalFrequency getFundamentalFrequency()
     {
         return mFundamentalFrequency;
     }
@@ -213,8 +253,10 @@ public class AMBEFrame
         {
             return new AMBEModelParameters(mFundamentalFrequency, mB, mErrors, previous);
         }
-
-        throw new IllegalStateException("Frame type TONE does not provide model parameters");
+        else
+        {
+            return new AMBEModelParameters();
+        }
     }
 
     /**

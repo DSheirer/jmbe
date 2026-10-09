@@ -1,0 +1,37 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+group = 'jmbe'
+version = 'unspecified'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':codec')
+    implementation 'ch.qos.logback:logback-classic:1.5.38'
+    implementation 'ch.qos.logback:logback-core:1.5.38'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.22.1'
+    implementation 'org.slf4j:slf4j-api:2.0.17'
+    implementation 'com.github.wendykierp:JTransforms:3.1'
+    implementation 'pl.edu.icm:JLargeArrays:1.6'
+
+    //ThumbDV dependency
+    implementation 'com.fazecast:jSerialComm:2.11.4'
+
+    testImplementation platform('org.junit:junit-bom:6.0.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+javafx {
+    modules = [ 'javafx.controls', 'javafx.fxml' ]
+}
+
+test {
+    useJUnitPlatform()
+}

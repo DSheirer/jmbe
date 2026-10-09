@@ -19,8 +19,12 @@
 
 package jmbe.codec.ambe;
 
+import jmbe.codec.FrameType;
+
 import jmbe.codec.MBEModelParameters;
 import jmbe.codec.MBESynthesizer;
+import jmbe.codec.ambe.tone.ToneGenerator;
+import jmbe.codec.ambe.tone.ToneParameters;
 import jmbe.codec.imbe.IMBEAudioCodec;
 import jmbe.iface.IAudioCodec;
 import org.slf4j.Logger;
@@ -43,18 +47,83 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * AMBE synthesizer implementation
+ */
 public class AMBESynthesizer extends MBESynthesizer
 {
-    private final static Logger mLog = LoggerFactory.getLogger(AMBESynthesizer.class);
-
-    private ToneGenerator mToneGenerator = new ToneGenerator();
-    private AMBEModelParameters mPreviousFrame = new AMBEModelParameters();
+    private final static Logger LOG = LoggerFactory.getLogger(AMBESynthesizer.class);
+    private final ToneGenerator mToneGenerator = new ToneGenerator();
+    private AMBEModelParameters mPreviousFrame;
+    private float mToneGain = 1.0f;
 
     /**
      * AMBE synthesizer producing 8 kHz 16-bit audio from AMBE audio (voice/tone) frames
      */
     public AMBESynthesizer()
     {
+        reset();
+    }
+
+    /**
+     * Random phase scale for voiced harmonics: the AMBE-3000R's when AMBEChipResponse is enabled.
+     */
+    @Override
+    protected double getPhaseNoiseScale()
+    {
+        return AMBEChipResponse.phaseNoiseScale();
+    }
+
+    /**
+     * Voiced-to-unvoiced and unvoiced-to-voiced harmonic fades of the AMBE-3000R (AMBEChipResponse enabled) when the
+     * whole frame switches (one of the two frames has no voiced harmonic), except into or out of comfort noise, where
+     * the chip's fades follow the published window (silence probe). Band-wise voicing changes between partly voiced
+     * frames keep the published window: with the chip fade there, the unvoiced bands of partly voiced codes 8..14
+     * came out 0.4..1.0 dB low on 806 real calls.
+     */
+    @Override
+    protected float getVoicingFadeIn(int n, MBEModelParameters previousFrame, MBEModelParameters currentFrame)
+    {
+        return chipFade(previousFrame, currentFrame) ? AMBEChipResponse.voicingFadeIn(n) :
+            super.getVoicingFadeIn(n, previousFrame, currentFrame);
+    }
+
+    @Override
+    protected float getVoicingFadeOut(int n, MBEModelParameters previousFrame, MBEModelParameters currentFrame)
+    {
+        return chipFade(previousFrame, currentFrame) ? 1.0f - AMBEChipResponse.voicingFadeIn(n) :
+            super.getVoicingFadeOut(n, previousFrame, currentFrame);
+    }
+
+    private static boolean chipFade(MBEModelParameters previousFrame, MBEModelParameters currentFrame)
+    {
+        return AMBEChipResponse.isEnabled() && previousFrame.getFrameType() != FrameType.SILENCE &&
+            currentFrame.getFrameType() != FrameType.SILENCE &&
+            (!previousFrame.hasVoicedBands() || !currentFrame.hasVoicedBands());
+    }
+
+    /** Unvoiced noise low-pass of the AMBE-3000R when AMBEChipResponse is enabled. */
+    @Override
+    protected float getUnvoicedBinGain(int bin)
+    {
+        return AMBEChipResponse.noiseBinGain(bin);
+    }
+
+    /** The AMBE-3000R's noise overlap-add normalization (AMBEChipResponse enabled): flat noise power across the frame. */
+    @Override
+    protected double getUnvoicedNormalizationExponent()
+    {
+        return AMBEChipResponse.noiseNormalizationExponent();
+    }
+
+    /**
+     * Sets an overall gain value for tone generation.
+     *
+     * @param gain in range 0.0f (disabled) to 2.0f (maximum) with 1.0f as the default
+     */
+    public void setToneGain(float gain)
+    {
+        mToneGain = gain;
     }
 
     /**
@@ -70,6 +139,7 @@ public class AMBESynthesizer extends MBESynthesizer
 
     public void reset()
     {
+        super.reset();
         mPreviousFrame = new AMBEModelParameters();
     }
 
@@ -81,7 +151,7 @@ public class AMBESynthesizer extends MBESynthesizer
      */
     public float[] getTone(ToneParameters toneParameters)
     {
-        return mToneGenerator.generate(toneParameters);
+        return mToneGenerator.generate(toneParameters, mToneGain);
     }
 
     /**
@@ -134,6 +204,13 @@ public class AMBESynthesizer extends MBESynthesizer
 
                 mPreviousFrame = parameters;
             }
+            else if(AMBEChipResponse.isEnabled())
+            {
+                //AMBE-3000R muting: silence, keeping the (zeroed) muted frame as the previous one so that muting holds
+                //while invalid frames continue and the next valid frame fades in from it
+                audio = new float[N_SAMPLES_PER_FRAME];
+                mPreviousFrame = parameters;
+            }
             else
             {
                 //Frame muting procedure
@@ -144,198 +221,9 @@ public class AMBESynthesizer extends MBESynthesizer
 
         if(audio == null)
         {
-            audio = new float[SAMPLES_PER_FRAME];
+            audio = new float[N_SAMPLES_PER_FRAME];
         }
 
         return audio;
-    }
-
-    /**
-     * Debug method for generating and testing AMBE recordings
-     * @param frames of AMBE encoded audio
-     * @param outputFile for generated audio
-     * @throws IOException for IO errors
-     */
-    public static void makeAMBEWaves(List<byte[]> frames, File outputFile) throws IOException
-    {
-        IAudioCodec audioCodec = new AMBEAudioCodec();
-
-        AudioFormat audioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
-            8000.0f, 16, 1, 2, 8000.0f, false);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(frames.size() * 320);
-
-        int frameCounter = 0;
-
-        for(byte[] frame : frames)
-        {
-            frameCounter++;
-
-            float[] samples = audioCodec.getAudio(frame);
-
-            ByteBuffer converted = ByteBuffer.allocate(samples.length * 2);
-            converted = converted.order(ByteOrder.LITTLE_ENDIAN);
-
-            for(float sample : samples)
-            {
-                converted.putShort((short)(sample * Short.MAX_VALUE));
-            }
-
-            byte[] bytes = converted.array();
-            byteBuffer.put(bytes);
-        }
-
-        AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(byteBuffer.array()), audioFormat, byteBuffer.array().length);
-
-        if(!outputFile.exists())
-        {
-            outputFile.createNewFile();
-        }
-
-        AudioSystem.write(ais,AudioFileFormat.Type.WAVE, outputFile);
-    }
-
-    /**
-     * Debug method for generating and testing IMBE recordings
-     * @param frames of IMBE encoded audio
-     * @param outputFile for generated audio
-     * @throws IOException for IO errors
-     */
-    public static void makeIMBEWaves(List<byte[]> frames, File outputFile) throws IOException
-    {
-        IAudioCodec audioCodec = new IMBEAudioCodec();
-
-        AudioFormat audioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
-            8000.0f, 16, 1, 2, 8000.0f, false);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(frames.size() * 320);
-
-        int frameCounter = 0;
-
-        for(byte[] frame : frames)
-        {
-            float[] samples = audioCodec.getAudio(frame);
-
-            ByteBuffer converted = ByteBuffer.allocate(samples.length * 2);
-            converted = converted.order(ByteOrder.LITTLE_ENDIAN);
-
-            for(float sample : samples)
-            {
-                converted.putShort((short)(sample * Short.MAX_VALUE));
-            }
-
-            byte[] bytes = converted.array();
-            byteBuffer.put(bytes);
-        }
-
-        AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(byteBuffer.array()), audioFormat, byteBuffer.array().length);
-
-        if(!outputFile.exists())
-        {
-            outputFile.createNewFile();
-        }
-
-        AudioSystem.write(ais,AudioFileFormat.Type.WAVE, outputFile);
-    }
-
-    /**
-     * Debug method for generating 20ms label tracks for Audacity
-     * @param sourceFile to use in naming the label track file.
-     * @param frameCount number of 20ms frame labels to generate
-     */
-    public static void makeLabelTrack(Path sourceFile, int frameCount)
-    {
-        Path output = Paths.get(sourceFile.toString().replace("_frames.txt", "_labels.txt"));
-
-        DecimalFormat df = new DecimalFormat("0.000000");
-        double frameMultiplier = 160.0 / 8000.0;
-
-        try
-        {
-            if(Files.exists(output))
-            {
-                Files.delete(output);
-            }
-
-            StringBuilder sb = new StringBuilder();
-
-            for(int x = 0; x < frameCount; x++)
-            {
-                if(x != 0)
-                {
-                    sb.append("\n");
-                }
-                double start = (double)x * frameMultiplier;
-                double end = (double)(x + 1) * frameMultiplier;
-                sb.append(df.format(start)).append("\t").append(df.format(end)).append("\t").append((x + 1));
-            }
-
-            Files.write(output, sb.toString().getBytes());
-        }
-        catch(IOException ioe)
-        {
-            mLog.error("Error writing tracks to [" + output.toString() + "]");
-        }
-    }
-
-    /**
-     * Test harness
-     *
-     * @param args not used
-     */
-    public static void main(String[] args)
-    {
-        File directory = new File("/home/denny/Documents/TMR/APCO25/AMBE Codec/MBE Dongle Recordings");
-//        File directory = new File("/home/denny/Documents/TMR/APCO25/IMBE Codec/MBE Dongle Generated Recordings");
-
-        File[] files = directory.listFiles(new FileFilter()
-        {
-            @Override
-            public boolean accept(File pathname)
-            {
-//                return pathname.toString().endsWith("_9_TS1_65062_6591008_frames.txt");
-                return pathname.toString().endsWith("_1_TS1_65040_frames.txt");
-
-//                return pathname.toString().endsWith("_2_TS0_65074_6544820_frames.txt");
-//                return pathname.toString().endsWith("_1_TS0_65084_6570511_frames.txt");
-//                return pathname.toString().endsWith("_1_TS0_65062_6571751_frames.txt");
-//                return pathname.toString().endsWith("_1_TS0_65083_6591001_frames.txt");
-//                return pathname.toString().endsWith("_1_TS0_65035_frames.txt");
-//                return pathname.toString().endsWith("_4_TS0_65084_6570451_frames.txt");
-//                return pathname.toString().endsWith("_7_TS1_65084_6591001_frames.txt");
-//                return pathname.toString().endsWith("_frames.txt");
-            }
-        });
-
-        for(File file: files)
-        {
-            System.out.println("File:" + file.toString());
-
-            try
-            {
-                String contents = new String(Files.readAllBytes(file.toPath()));
-                String[] split = contents.split(",");
-                List<byte[]> frames = new ArrayList<>();
-
-                makeLabelTrack(file.toPath(), split.length);
-
-                for(String splitFrame : split)
-                {
-                    String frame = splitFrame.replace("\"", "");
-                    byte[] data = new byte[frame.length() / 2];
-                    for(int x = 0; x < frame.length(); x += 2)
-                    {
-                        data[x / 2] = (byte)(0xFF & Integer.parseInt(frame.substring(x, x + 2), 16));
-                    }
-                    frames.add(data);
-                }
-
-                File outputFile = new File(file.toString().replace("_frames.txt", "_synthesized.wav"));
-                makeAMBEWaves(frames, outputFile);
-//                makeIMBEWaves(frames, outputFile);
-            }
-            catch(IOException ioe)
-            {
-                System.out.println("Error:" + ioe.getLocalizedMessage());
-            }
-        }
     }
 }

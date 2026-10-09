@@ -19,6 +19,7 @@
 
 package jmbe.codec.imbe;
 
+import java.text.DecimalFormat;
 import jmbe.codec.FrameType;
 import jmbe.codec.IFundamentalFrequency;
 
@@ -254,6 +255,7 @@ public enum IMBEFundamentalFrequency implements IFundamentalFrequency
     private float mFrequency;
     private static Map<Integer,IMBEFundamentalFrequency> LOOKUP_MAP = new TreeMap<>();
     private static final EnumSet<IMBEFundamentalFrequency> VALID_VALUES = EnumSet.range(W0, W207);
+    private static final DecimalFormat FREQUENCY_HERTZ_FORMAT = new DecimalFormat("0.00");
 
     IMBEFundamentalFrequency(int index)
     {
@@ -281,6 +283,12 @@ public enum IMBEFundamentalFrequency implements IFundamentalFrequency
         return FrameType.VOICE;
     }
 
+    @Override
+    public String getName()
+    {
+        return name();
+    }
+
     public float getFrequency()
     {
         return mFrequency;
@@ -296,5 +304,24 @@ public enum IMBEFundamentalFrequency implements IFundamentalFrequency
         }
 
         return IMBEFundamentalFrequency.INVALID;
+    }
+
+    public float getFrequencyHertz()
+    {
+        return 8000 * (getFrequency() / (2.0f * (float)Math.PI));
+    }
+
+    @Override
+    public String toString()
+    {
+        return FREQUENCY_HERTZ_FORMAT.format(getFrequencyHertz());
+    }
+
+    public static void main(String[] args)
+    {
+        for(IMBEFundamentalFrequency frequency:IMBEFundamentalFrequency.values())
+        {
+            System.out.println(frequency.name() + " Harmonics:" + frequency.getL() + " " + frequency.getFrequency() + " = " + frequency.getFrequencyHertz() + " Hz");
+        }
     }
 }

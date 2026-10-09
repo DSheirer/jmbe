@@ -1,0 +1,139 @@
+/*
+ *
+ *  * ******************************************************************************
+ *  * Copyright (C) 2014-2019 Dennis Sheirer
+ *  *
+ *  * This program is free software: you can redistribute it and/or modify
+ *  * it under the terms of the GNU General Public License as published by
+ *  * the Free Software Foundation, either version 3 of the License, or
+ *  * (at your option) any later version.
+ *  *
+ *  * This program is distributed in the hope that it will be useful,
+ *  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  * GNU General Public License for more details.
+ *  *
+ *  * You should have received a copy of the GNU General Public License
+ *  * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ *  * *****************************************************************************
+ *
+ *
+ */
+
+package thumbdv.message.request;
+
+import thumbdv.message.PacketField;
+import thumbdv.message.type.VocoderRate;
+
+/**
+ * Decode speech request, used to request decode of an encoded audio frame.
+ */
+public class DecodeAmbeRequest extends AmbeRequest
+{
+    private static final int CHANNEL_DATA_IDENTIFIER_INDEX = 4;
+    private static final byte SAMPLE_COUNT = (byte)(0xFF & 160);  //8 kHz Audio sample count for 20ms frame
+
+    private byte[] mAudioFrame;
+    private VocoderRate mVocoderRate;
+
+    /**
+     * Constructs an audio frame decode request using the specified vocoder rate.
+     * @param audioFrame of encoded audio samples
+     * @param vocoderRate to use when decoding
+     */
+    public DecodeAmbeRequest(byte[] audioFrame, VocoderRate vocoderRate)
+    {
+        mAudioFrame = audioFrame;
+        mVocoderRate = vocoderRate;
+    }
+
+    @Override
+    public boolean isAudioDecode()
+    {
+        return true;
+    }
+
+    /**
+     * Constructs an audio frame decode request using the current vocoder rate.
+     * @param audioFrame of encoded audio samples
+     */
+    public DecodeAmbeRequest(byte[] audioFrame)
+    {
+        this(audioFrame, null);
+    }
+
+    @Override
+    public PacketField getType()
+    {
+        return PacketField.PACKET_TYPE_DATA;
+    }
+
+    private boolean hasVocoderRate()
+    {
+        return mVocoderRate != null;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "DECODE AMBE REQUEST MSG:" + toHex(getData());
+    }
+
+    @Override
+    public byte[] getData()
+    {
+        int offset = 4;
+
+        if(hasVocoderRate())
+        {
+            int length = mAudioFrame.length + 8;
+            byte[] data = createMessage(length, getType());
+
+            data[offset++] = PacketField.VOCODER.getCode();
+//            data[offset++] = mVocoderRate.getValue();
+
+            data[offset++] = PacketField.CHANNEL_DATA_HARD_SYMBOL.getCode();
+            data[offset++] = (byte)(0xFF & (mAudioFrame.length * 8));
+            System.arraycopy(mAudioFrame, 0, data, offset, mAudioFrame.length);
+            offset += mAudioFrame.length;
+            data[offset++] = PacketField.SAMPLE_COUNT.getCode();
+            data[offset++] = (byte)0xA0;
+            data[offset++] = (byte)0x02;
+            data[offset++] = (byte)0x00;
+            data[offset] = (byte)0x00;
+
+            return data;
+        }
+        else
+        {
+            int length = mAudioFrame.length + 2;
+            byte[] data = createMessage(length, getType());
+
+//            data[offset++] = PacketField.VOCODER.getCode();
+//            data[offset++] = VocoderRate.RATE_33.getValue();
+
+            //Specifies the encoded audio frame is in hard symbol decision bit format, and the bit length.
+            data[offset++] = PacketField.CHANNEL_DATA_HARD_SYMBOL.getCode();
+            data[offset++] = (byte)(0xFF & (mAudioFrame.length * 8));
+
+//            for(int i = mAudioFrame.length - 1; i >= 0; i--)
+//            {
+//                data[offset++] = mAudioFrame[i];
+//            }
+
+            System.arraycopy(mAudioFrame, 0, data, offset, mAudioFrame.length);
+
+            offset += mAudioFrame.length;
+//            data[offset++] = PacketField.SAMPLE_COUNT.getCode();
+//            data[offset++] = (byte)0xA0; //160 samples
+
+//            data[offset++] = PacketField.CMODE.getCode();
+//            data[offset++] = (byte)0x00;
+//            data[offset] = (byte)0x00;
+
+            return data;
+        }
+
+
+    }
+}
