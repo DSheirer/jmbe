@@ -89,11 +89,11 @@ public enum Gain
     G62(8.124863f),
     G63(8.695827f);
 
-    private float mGain;
+    private final float mGain;
 
     Gain(float gain)
     {
-        mGain = gain + 1.0f;
+        mGain = gain;
     }
 
     public float getGain()

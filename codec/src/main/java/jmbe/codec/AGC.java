@@ -28,7 +28,7 @@ import org.apache.commons.math3.util.FastMath;
  */
 public class AGC
 {
-    private static final float MINIMUM_GAIN = 2.4f;
+    private static final float MINIMUM_GAIN = 1.0f;
     private static final float DEFAULT_GAIN = 3.0f;
     private static final float MAXIMUM_GAIN = 30.0f;
     private static final float ATTACK_GAIN_LOOP_BANDWIDTH = 0.001f;
