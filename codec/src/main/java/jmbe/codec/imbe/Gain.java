@@ -93,7 +93,7 @@ public enum Gain
 
     Gain(float gain)
     {
-        mGain = gain + 1;
+        mGain = gain;
     }
 
     public float getGain()
