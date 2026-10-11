@@ -79,7 +79,8 @@ public class ObservableMBEFrame
         StringBuilder sb = new StringBuilder();
         sb.append("Fundamental:").append(mModelParameters.getMBEFundamentalFrequency().getName());
         sb.append(" L Band Count:").append(mModelParameters.getL()).append("\n\n");
-        double ambePowerScaleY = getAmbeAmplitudes()[0] / getJmbeAmplitudes()[0];
+
+        double ambePowerScaleY = getAmbeAmplitudes().length > 0 ? getAmbeAmplitudes()[0] / getJmbeAmplitudes()[0] : 1.0;
         sb.append("AMBE Power Adjustment Y: ").append(DECIMAL_FORMAT.format(ambePowerScaleY)).append("\n");
 
         double[] ambeWeightOriginal = new double[mAmbeAmplitudes.length + 1];
@@ -92,7 +93,7 @@ public class ObservableMBEFrame
             ambeWeightScaled[i + 1] = ambeWeightOriginal[i + 1] * ambePowerScaleY;
         }
 
-        float[] frequencies = new float[mAmbeAmplitudes.length + 1];
+        float[] frequencies = new float[mJmbeAmplitudes.length + 1];
 
         for(int i = 0; i < mModelParameters.getVoicingDecisions().length; i++)
         {
@@ -177,7 +178,15 @@ public class ObservableMBEFrame
             {
                 sb2.append(mJmbeAmplitudes[i - 1]).append(",");
                 sb2.append(mJmbeEnhancedAmplitudes[i - 1]).append(",");
-                sb2.append(mAmbeAmplitudes[i - 1]).append("\n");
+
+                if(mAmbeAmplitudes.length > 0)
+                {
+                    sb2.append(mAmbeAmplitudes[i - 1]).append("\n");
+                }
+                else
+                {
+                    sb2.append(0).append("\n");
+                }
             }
             else
             {

@@ -67,8 +67,10 @@ import jmbe.codec.ambe.AMBEFrame;
 import jmbe.codec.ambe.AMBEModelParameters;
 import jmbe.codec.ambe.AMBESynthesizer;
 import jmbe.codec.imbe.IMBEFrame;
+import jmbe.codec.imbe.IMBEFrameLegacy;
 import jmbe.codec.imbe.IMBEModelParameters;
 import jmbe.codec.imbe.IMBESynthesizer;
+import jmbe.codec.imbe.IMBESynthesizerLegacy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import thumbdv.ThumbDv;
@@ -696,51 +698,86 @@ public class MBEViewer extends VBox
             List<Float> fundamentalFrequencies = new ArrayList<>();
             List<Integer> harmonicCounts = new ArrayList<>();
 
-            List<byte[]> jmbeAudioData;
-            List<byte[]> jmbeAudioDataEnhanced;
+            List<byte[]> ambeFrameData = new ArrayList<>();
+            List<byte[]> leftAudioData;
+            List<byte[]> leftAudioDataEnhanced;
 
             if(AMBE_PROTOCOLS.contains(sequence.getProtocol()))
             {
-                jmbeAudioData = getAMBEAudio(sequence, false);
-                jmbeAudioDataEnhanced = getAMBEAudio(sequence, true);
+                leftAudioData = getAMBEAudio(sequence, false);
+                leftAudioDataEnhanced = getAMBEAudio(sequence, true);
             }
             else if(IMBE_PROTOCOLS.contains(sequence.getProtocol()))
             {
-                jmbeAudioData = getIMBEAudio(sequence, false);
-                jmbeAudioDataEnhanced = getIMBEAudio(sequence, true);
+                leftAudioData = getIMBEAudio(sequence, false);
+                leftAudioDataEnhanced = getIMBEAudio(sequence, true);
             }
             else
             {
-                jmbeAudioData = new ArrayList<>();
-                jmbeAudioDataEnhanced = new ArrayList<>();
+                leftAudioData = new ArrayList<>();
+                leftAudioDataEnhanced = new ArrayList<>();
             }
 
-            List<byte[]> ambeFrameData = new ArrayList<>();
             for(VoiceFrame voiceFrame: sequence.getVoiceFrames())
             {
                 ambeFrameData.add(voiceFrame.getFrameBytes());
             }
 
-            List<byte[]> ambeAudioData = ThumbDv.decode(ambeFrameData, ThumbDv.AudioProtocol.DMR);
-            Path stereoOutput = Path.of(file.toString().replace(".mbe", "_output_both.wav"));
-            Path monoJmbe = Path.of(file.toString().replace(".mbe", "_output_jmbe.wav"));
-            Path monoAmbe = Path.of(file.toString().replace(".mbe", "_output_ambe3000.wav"));
-//            Path csvAnalysis = root.resolve("spectrum_analysis.csv");
+            List<byte[]> rightAudioData;
 
-            LOG.info("Audio collected - JMBE: " + jmbeAudioData.size() + " AMBE:" + ambeAudioData.size());
-
-            while(ambeAudioData.size() < ambeFrameData.size())
+            if(AMBE_PROTOCOLS.contains(sequence.getProtocol()))
             {
-                int length = ambeAudioData.get(0).length;
-                ambeAudioData.add(new byte[length]);
+                rightAudioData = ThumbDv.decode(ambeFrameData, ThumbDv.AudioProtocol.DMR);
+            }
+            else if(IMBE_PROTOCOLS.contains(sequence.getProtocol()))
+            {
+                rightAudioData = getIMBEAudioLegacy(sequence);
+            }
+            else
+            {
+                rightAudioData = new ArrayList<>();
+            }
+
+            Path stereoOutput = Path.of(file.toString().replace(".mbe", "_output_both.wav"));
+            Path monoLeft = Path.of(file.toString().replace(".mbe", "_output_jmbe.wav"));
+
+            Path monoRight;
+
+            if(AMBE_PROTOCOLS.contains(sequence.getProtocol()))
+            {
+                monoRight = Path.of(file.toString().replace(".mbe", "_output_ambe3000.wav"));
+            }
+            else if(IMBE_PROTOCOLS.contains(sequence.getProtocol()))
+            {
+                monoRight = Path.of(file.toString().replace(".mbe", "_output_jmbe_legacy.wav"));
+            }
+            else
+            {
+                monoRight = Path.of(file.toString().replace(".mbe", "_output_jmbe_unknown.wav"));
+            }
+
+            if(AMBE_PROTOCOLS.contains(sequence.getProtocol()))
+            {
+                LOG.info("Audio collected - JMBE: " + leftAudioData.size() + " AMBE:" + rightAudioData.size());
+            }
+            else if(IMBE_PROTOCOLS.contains(sequence.getProtocol()))
+            {
+                LOG.info("Audio collected - JMBE: " + leftAudioData.size() + " JMBE Legacy:" + rightAudioData.size());
+            }
+
+            while(rightAudioData.size() < ambeFrameData.size())
+            {
+                int length = rightAudioData.get(0).length;
+                rightAudioData.add(new byte[length]);
                 LOG.warn("Adding new byte array length " + length + " to ambe audio list to match jmbe list size");
             }
 
             try
             {
-                WaveUtils.writeBE(jmbeAudioData, ambeAudioData, stereoOutput);
-                WaveUtils.writeBE(jmbeAudioData, monoJmbe);
-                WaveUtils.writeBE(ambeAudioData, monoAmbe);
+                boolean bigEndian = false;
+                WaveUtils.write(leftAudioData, rightAudioData, stereoOutput, bigEndian);
+                WaveUtils.write(leftAudioData, monoLeft, bigEndian);
+                WaveUtils.write(rightAudioData, monoRight, bigEndian);
                 LOG.info("Wave audio file created at: " + stereoOutput);
 //                new Alert(Alert.AlertType.INFORMATION, "Synthesized audio saved to " + outputFile);
             }
@@ -755,7 +792,7 @@ public class MBEViewer extends VBox
                 List<AMBEModelParameters> parameters = getAMBEModelParameters(sequence);
                 List<Integer> harmonics = getHarmonicCounts(parameters);
                 List<Float> fundamentals = getFundamentalFrequencies(parameters);
-                AnalysisResults results = Analyzer.process(jmbeAudioData, jmbeAudioDataEnhanced, ambeAudioData,
+                AnalysisResults results = Analyzer.process(leftAudioData, leftAudioDataEnhanced, rightAudioData,
                         fundamentals, harmonics);
 
                 List<double[]> jmbeAmplitudes = results.jmbeAmplitudes();
@@ -790,14 +827,37 @@ public class MBEViewer extends VBox
     {
         //Invoke the synthesize for IMBE audio
         IMBESynthesizer synthesizer = new IMBESynthesizer();
+        synthesizer.setAGC(true);
+        synthesizer.setComfortNoiseGeneratorGain(1.0f);
         synthesizer.setEnhanceSpectralAmplitudes(enhanceSpectralAmplitudes);
-//            synthesizer.setComfortNoiseGeneratorGain(0.4f);
 
         List<byte[]> imbeAudioData = new ArrayList<>();
 
         for(VoiceFrame voiceFrame: sequence.getVoiceFrames())
         {
             float[] samples = synthesizer.getAudio(new IMBEFrame(voiceFrame.getFrameBytes()));
+            ByteBuffer pcm = ByteBuffer.allocate(samples.length * 2).order(ByteOrder.LITTLE_ENDIAN);
+            for(float sample : samples)
+            {
+                pcm.putShort((short)(sample * Short.MAX_VALUE));
+            }
+
+            imbeAudioData.add(pcm.array());
+        }
+
+        return imbeAudioData;
+    }
+
+    private static  List<byte[]> getIMBEAudioLegacy(MBECallSequence sequence)
+    {
+        //Invoke the synthesize for IMBE audio
+        IMBESynthesizerLegacy synthesizer = new IMBESynthesizerLegacy();
+
+        List<byte[]> imbeAudioData = new ArrayList<>();
+
+        for(VoiceFrame voiceFrame: sequence.getVoiceFrames())
+        {
+            float[] samples = synthesizer.getAudio(new IMBEFrameLegacy(voiceFrame.getFrameBytes()));
             ByteBuffer pcm = ByteBuffer.allocate(samples.length * 2).order(ByteOrder.LITTLE_ENDIAN);
             for(float sample : samples)
             {
