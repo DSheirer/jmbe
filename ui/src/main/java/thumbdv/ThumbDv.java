@@ -385,7 +385,8 @@ public class ThumbDv implements AutoCloseable
             }
 
             LOG.info("Writing wave file ...");
-            WaveUtils.writeBE(audio, Path.of("/run/media/denny/T9/AMBE3000R and ThumbDV/audio.wav"));
+            boolean bigEndian = true;
+            WaveUtils.write(audio, Path.of("/run/media/denny/T9/AMBE3000R and ThumbDV/audio.wav"), bigEndian);
             LOG.info("Finished!");
 
             thumbDv.close();

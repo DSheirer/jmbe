@@ -37,16 +37,19 @@ import javax.sound.sampled.AudioSystem;
 public class WaveUtils
 {
     private static final Logger LOG = LoggerFactory.getLogger(WaveUtils.class);
-    private static final AudioFormat AUDIO_FORMAT_8KHZ_MONO = new AudioFormat(8000.0f, 16, 1, true, true);
-    private static final AudioFormat AUDIO_FORMAT_8KHZ_STEREO = new AudioFormat(8000.0f, 16, 2, true, true);
+    private static final AudioFormat AUDIO_FORMAT_8KHZ_MONO_LE = new AudioFormat(8000.0f, 16, 1, true, false);
+    private static final AudioFormat AUDIO_FORMAT_8KHZ_STEREO_LE = new AudioFormat(8000.0f, 16, 2, true, false);
+    private static final AudioFormat AUDIO_FORMAT_8KHZ_MONO_BE = new AudioFormat(8000.0f, 16, 1, true, false);
+    private static final AudioFormat AUDIO_FORMAT_8KHZ_STEREO_BE = new AudioFormat(8000.0f, 16, 2, true, false);
 
     /**
      * Writes the list of signed, 16-bit sample arrays to a mono wave file at 8 kHz.
      *
      * @param audio samples list of byte arrays containing 16-bit signed little endian samples
      * @param outputFile for the wave
+     * @param bigEndian true for big endian format
      */
-    public static void writeBE(List<byte[]> audio, Path outputFile) throws Exception
+    public static void write(List<byte[]> audio, Path outputFile, boolean bigEndian) throws Exception
     {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         for(byte[] sample : audio)
@@ -54,7 +57,8 @@ public class WaveUtils
             baos.write(sample, 0, sample.length);
         }
 
-        writeBE(baos.toByteArray(), AUDIO_FORMAT_8KHZ_MONO, outputFile);
+        AudioFormat audioFormat = bigEndian ? AUDIO_FORMAT_8KHZ_MONO_BE : AUDIO_FORMAT_8KHZ_MONO_LE;
+        write(baos.toByteArray(), audioFormat, outputFile);
     }
 
     /**
@@ -63,10 +67,12 @@ public class WaveUtils
      * @param left samples for the left channel
      * @param right samples for the right channel
      * @param outputFile for the wave
+     * @param bigEndian true for big endian format
      * @throws IllegalArgumentException if there is a size mismatch between the left/right lists or with the individual
+     *
      * byte array sizes.
      */
-    public static void writeBE(List<byte[]> left, List<byte[]> right, Path outputFile) throws Exception
+    public static void write(List<byte[]> left, List<byte[]> right, Path outputFile, boolean bigEndian) throws Exception
     {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -94,7 +100,8 @@ public class WaveUtils
             }
         }
 
-        writeBE(baos.toByteArray(), AUDIO_FORMAT_8KHZ_STEREO, outputFile);
+        AudioFormat audioFormat = bigEndian ? AUDIO_FORMAT_8KHZ_STEREO_BE : AUDIO_FORMAT_8KHZ_STEREO_LE;
+        write(baos.toByteArray(), audioFormat, outputFile);
     }
 
     /**
@@ -103,7 +110,7 @@ public class WaveUtils
      * @param format to designate in the wave file
      * @param outputFile to write
      */
-    public static void writeBE(byte[] audio, AudioFormat format, Path outputFile)
+    public static void write(byte[] audio, AudioFormat format, Path outputFile)
     {
         try(AudioInputStream ais = new AudioInputStream(new ByteArrayInputStream(audio), format, audio.length / 2))
         {
