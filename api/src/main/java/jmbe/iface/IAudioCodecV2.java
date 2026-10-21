@@ -38,6 +38,13 @@ public interface IAudioCodecV2 extends IAudioCodec
     String FEATURE_TONE_GENERATOR_GAIN = "feature_tone_generator_gain";
 
     /**
+     * Legacy AMBE tone amplitude levels. Boolean: true uses the JMBE 1.x amplitude
+     * mapping and halves each simultaneous dual-tone component. False (default)
+     * uses the hardware-calibrated levels. Tone gain applies in either mode.
+     */
+    String FEATURE_LEGACY_TONE_LEVELS = "feature_legacy_tone_levels";
+
+    /**
      * Automatic Gain Control (AGC).  Value argument is boolean.  True = enabled. False = disabled.
      */
     String FEATURE_AUTOMATIC_GAIN_CONTROL = "feature_automatic_gain_control";

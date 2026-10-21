@@ -54,6 +54,17 @@ public class AMBEAudioCodecV2 extends AMBEAudioCodec implements IAudioCodecV2
                     throw new IllegalArgumentException("Valid values in range: 0.0f to 2.0f.  Unsupported value: " + value);
                 }
             }
+            else if(FEATURE_LEGACY_TONE_LEVELS.equals(feature))
+            {
+                if(value instanceof Boolean enabled)
+                {
+                    mSynthesizer.setLegacyToneLevels(enabled);
+                }
+                else
+                {
+                    throw new IllegalArgumentException("Legacy tone levels require a boolean. Unsupported value: " + value);
+                }
+            }
             else if(FEATURE_AUTOMATIC_GAIN_CONTROL.equals(feature))
             {
                 if(value instanceof Boolean enabled)
@@ -79,6 +90,7 @@ public class AMBEAudioCodecV2 extends AMBEAudioCodec implements IAudioCodecV2
     @Override
     public List<String> getFeatures()
     {
-        return List.of(FEATURE_NOISE_GENERATOR_GAIN, FEATURE_TONE_GENERATOR_GAIN, FEATURE_AUTOMATIC_GAIN_CONTROL);
+        return List.of(FEATURE_NOISE_GENERATOR_GAIN, FEATURE_TONE_GENERATOR_GAIN,
+            FEATURE_AUTOMATIC_GAIN_CONTROL, FEATURE_LEGACY_TONE_LEVELS);
     }
 }

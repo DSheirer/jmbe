@@ -117,8 +117,16 @@ public class AMBESynthesizer extends MBESynthesizer
     }
 
     /**
+     * Selects legacy tone amplitude levels. Disabled by default.
+     * @param enabled true to use legacy levels
+     */
+    public void setLegacyToneLevels(boolean enabled)
+    {
+        mToneGenerator.setLegacyToneLevels(enabled);
+    }
+
+    /**
      * Sets an overall gain value for tone generation.
-     *
      * @param gain in range 0.0f (disabled) to 2.0f (maximum) with 1.0f as the default
      */
     public void setToneGain(float gain)
