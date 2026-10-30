@@ -64,6 +64,14 @@ public abstract class MBESynthesizer
     }
 
     /**
+     * Automatic gain control, for inspecting its state during analysis.
+     */
+    public AGC getAGC()
+    {
+        return mAGC;
+    }
+
+    /**
      * Enables or disables spectral amplitude enhancement.  Note: this is an engineering setting that should always be
      * enabled unless you're trying to isolate the spectral amplitude enhancement function.
      * @param enable true to enahble or false to disable.
@@ -278,7 +286,7 @@ public abstract class MBESynthesizer
         //Apply optional automatic gain control
         if(mAGCEnabled)
         {
-            mAGC.process(audio);
+            mAGC.process(audio, parameters);
         }
 
         //Constrain or clip audio to prevent clicking

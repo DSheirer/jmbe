@@ -1,6 +1,7 @@
 package jmbe;
 
 import jmbe.codec.ambe.AMBEAudioCodec;
+import jmbe.codec.ambe.AMBEAudioCodecV2;
 import jmbe.codec.imbe.IMBEAudioCodec;
 import jmbe.codec.imbe.IMBEAudioCodecV2;
 import jmbe.iface.IAudioCodec;
@@ -34,13 +35,13 @@ public class JMBEAudioLibrary implements IAudioCodecLibrary
     @Override
     public int getMinorVersion()
     {
-        return 0;
+        return 1;
     }
 
     @Override
     public int getBuildVersion()
     {
-        return 2;
+        return 0;
     }
 
     @Override
@@ -61,10 +62,11 @@ public class JMBEAudioLibrary implements IAudioCodecLibrary
     {
         switch (codec)
         {
+            //Return the V2 codec for all cases - V2 is backward compatible with V1
             case IMBEAudioCodec.CODEC_NAME:
-                return new IMBEAudioCodec();
+                return new IMBEAudioCodecV2();
             case AMBEAudioCodec.CODEC_NAME:
-                return new AMBEAudioCodec();
+                return new AMBEAudioCodecV2();
             default:
                 throw new IllegalArgumentException("Unsupported CODEC:" + (codec != null ? codec : "(null)"));
         }
