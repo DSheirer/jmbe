@@ -5,7 +5,8 @@ description = 'JMBE Audio Library build script'
 
 subprojects {
     apply plugin: 'java'
-    version = '2.1.0'
+
+    version = '2.1.1'
 
     java {
         sourceCompatibility = JavaVersion.VERSION_17
