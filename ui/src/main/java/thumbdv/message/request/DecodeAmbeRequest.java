@@ -110,7 +110,7 @@ public class DecodeAmbeRequest extends AmbeRequest
             byte[] data = createMessage(length, getType());
 
 //            data[offset++] = PacketField.VOCODER.getCode();
-//            data[offset++] = VocoderRate.RATE_33.getValue();
+//            data[offset++] = RateCodeWord.AMBE_PLUS2_2450_1150.getValue();
 
             //Specifies the encoded audio frame is in hard symbol decision bit format, and the bit length.
             data[offset++] = PacketField.CHANNEL_DATA_HARD_SYMBOL.getCode();

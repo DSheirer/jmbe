@@ -82,10 +82,29 @@ public class ThumbDv implements AutoCloseable
 
     public enum AudioProtocol
     {
-        DMR,
-        DSTAR,
-        NXDN,
-        P25_PHASE2,
+        DMR(VocoderRate.AMBE_PLUS2_2450_1150),
+        DSTAR(VocoderRate.AMBE_PLUS_2400_1200_DSTAR),
+        NXDN(VocoderRate.AMBE_PLUS2_2450_1150),
+        P25_PHASE2(VocoderRate.AMBE_PLUS2_2450_1150);
+
+        private final VocoderRate mVocoderRate;
+
+        /**
+         * Constructs an instance
+         * @param vocoderRate vocoder and FEC rate used by the protocol
+         */
+        AudioProtocol(VocoderRate vocoderRate)
+        {
+            mVocoderRate = vocoderRate;
+        }
+
+        /**
+         * Vocoder and FEC rate used by the protocol
+         */
+        public VocoderRate getRateCodeWord()
+        {
+            return mVocoderRate;
+        }
     }
 
     private AudioProtocol mAudioProtocol;
@@ -116,19 +135,11 @@ public class ThumbDv implements AutoCloseable
             LOG.info("Power-On Config: " + response);
 
             //Note: configure additional features of the AMBE-3000R with this request message, or use the defaults.
-//            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, VocoderRate.RATE_33);
+//            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, RateCodeWord.AMBE_PLUS2_2450_1150);
 //            response = send(request).get(2, TimeUnit.SECONDS);
 //            LOG.info("Set Soft Config - Response: " + response);
 
-            if(audioProtocol.equals(AudioProtocol.DSTAR))
-            {
-                request = new SetVocoderParametersRequest(0x0130, 0x0763, 0x4000, 0x0000, 0x0000, 0x0048); //DMR
-            }
-            else
-            {
-                request = new SetVocoderParametersRequest(0x0431, 0x0754, 0x2400, 0x0000, 0x0000, 0x6F48); //DMR
-            }
-
+            request = new SetVocoderParametersRequest(audioProtocol.getRateCodeWord());
             response = send(request).get(2, TimeUnit.SECONDS);
             LOG.info("Set Vocoder Parameters - Response: " + response);
 
@@ -319,7 +330,7 @@ public class ThumbDv implements AutoCloseable
             LOG.info("Power-On Config: " + response);
 
             //Note: configure additional features of the AMBE-3000R with this request message, or use the defaults.
-            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, VocoderRate.RATE_33);
+            request = new ResetWithConfigRequest(InterfaceConfiguration.PACKET_UART, VocoderRate.AMBE_PLUS2_2450_1150);
             response = thumbDv.send(request).get(2, TimeUnit.SECONDS);
             LOG.info("Set Soft Config - Response: " + response);
 
