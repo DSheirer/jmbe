@@ -22,9 +22,7 @@
 
 package thumbdv.message.request;
 
-import java.util.logging.Logger;
 import jmbe.binary.BinaryFrame;
-import thumbdv.message.AmbeMessage;
 import thumbdv.message.type.Compander;
 import thumbdv.message.type.InterfaceConfiguration;
 import thumbdv.message.PacketField;
@@ -73,9 +71,15 @@ public class ResetWithConfigRequest extends AmbeRequest
     /**
      * Constructs an instance
      * @param interfaceConfiguration to use
+     * @param vocoderRate to use.  Must have a rate index (see {@link VocoderRate#hasRateIndex()}).
      */
     public ResetWithConfigRequest(InterfaceConfiguration interfaceConfiguration, VocoderRate vocoderRate)
     {
+        if(!vocoderRate.hasRateIndex())
+        {
+            throw new IllegalArgumentException("Rate " + vocoderRate + " has no rate index");
+        }
+
         mInterfaceConfiguration = interfaceConfiguration;
         mVocoderRate = vocoderRate;
     }

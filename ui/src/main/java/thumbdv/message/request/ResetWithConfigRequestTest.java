@@ -27,7 +27,6 @@ import thumbdv.message.PacketField;
 import thumbdv.message.type.Compander;
 import thumbdv.message.type.InterfaceConfiguration;
 import thumbdv.message.type.UartBaudRate;
-import thumbdv.message.type.VocoderRate;
 
 /**
  * Reset request packet with configuration values

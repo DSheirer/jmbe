@@ -32,8 +32,18 @@ public class SetVocoderRequest extends AmbeRequest
 {
     private VocoderRate mVocoderRate;
 
+    /**
+     * Constructs an instance
+     * @param rate to use.  Must have a rate index (see {@link VocoderRate#hasRateIndex()}).  Use
+     * {@link SetVocoderParametersRequest} for rates without one.
+     */
     public SetVocoderRequest(VocoderRate rate)
     {
+        if(!rate.hasRateIndex())
+        {
+            throw new IllegalArgumentException("Rate " + rate + " has no rate index - use SetVocoderParametersRequest");
+        }
+
         mVocoderRate = rate;
     }
 

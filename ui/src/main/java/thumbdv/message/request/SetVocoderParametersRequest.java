@@ -23,6 +23,7 @@
 package thumbdv.message.request;
 
 import thumbdv.message.PacketField;
+import thumbdv.message.type.VocoderRate;
 
 /**
  * Set Vocoder parameters request packet
@@ -44,6 +45,21 @@ public class SetVocoderParametersRequest extends AmbeRequest
         mWord3 = word3;
         mWord4 = word4;
         mWord5 = word5;
+    }
+
+    /**
+     * Constructs a request using the rate control words (RCW0 - RCW5) of a predefined rate.
+     *
+     * @param vocoderRate predefined rate
+     */
+    public SetVocoderParametersRequest(VocoderRate vocoderRate)
+    {
+        this(vocoderRate.getRateControlWords());
+    }
+
+    private SetVocoderParametersRequest(int[] words)
+    {
+        this(words[0], words[1], words[2], words[3], words[4], words[5]);
     }
 
     @Override
