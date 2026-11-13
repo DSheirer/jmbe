@@ -20,12 +20,10 @@
 package jmbe.codec.imbe;
 
 import jmbe.binary.BinaryFrame;
-import jmbe.edac.Golay23;
-import jmbe.edac.Hamming15;
+import jmbe.frame.CorrectedIMBEFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteOrder;
 import java.util.Arrays;
 
 
@@ -35,7 +33,6 @@ public class IMBEFrame
 
     public static final float LOG_2 = (float)Math.log(2.0);
 
-    public static final int[] RANDOMIZER_SEED = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
     public static final int[] VECTOR_B0 = {0, 1, 2, 3, 4, 5, 141, 142};
 
     /**
@@ -57,7 +54,7 @@ public class IMBEFrame
 
     private BinaryFrame mFrame;
     private IMBEFundamentalFrequency mFundamentalFrequency;
-    private int[] mErrors = new int[7];
+    private int[] mErrors;
     private int mErrorCountTotal;
 
     /**
@@ -76,33 +73,17 @@ public class IMBEFrame
      */
     public IMBEFrame(byte[] data)
     {
-        mFrame = BinaryFrame.fromBytes(data, ByteOrder.LITTLE_ENDIAN);
-        decode();
+        this(CorrectedIMBEFrame.correct(data));
     }
 
-    private void decode()
+    /**
+     * Constructs an IMBE frame from a frame that has already been deinterleaved, error corrected and derandomized.
+     */
+    public IMBEFrame(CorrectedIMBEFrame correctedFrame)
     {
-        IMBEInterleave.deinterleave(mFrame);
-
-        mErrors[0] = Golay23.checkAndCorrect(mFrame, 0);
-        mErrorCountTotal += mErrors[0];
-
-        derandomize();
-
-        mErrors[1] = Golay23.checkAndCorrect(mFrame, 23);
-        mErrorCountTotal += mErrors[1];
-
-        mErrors[2] = Golay23.checkAndCorrect(mFrame, 46);
-        mErrorCountTotal += mErrors[2];
-        mErrors[3] = Golay23.checkAndCorrect(mFrame, 69);
-        mErrorCountTotal += mErrors[3];
-        mErrors[4] = Hamming15.checkAndCorrect(mFrame, 92);
-        mErrorCountTotal += mErrors[4];
-        mErrors[5] = Hamming15.checkAndCorrect(mFrame, 107);
-        mErrorCountTotal += mErrors[5];
-        mErrors[6] = Hamming15.checkAndCorrect(mFrame, 122);
-        mErrorCountTotal += mErrors[6];
-
+        mFrame = correctedFrame.getFrame();
+        mErrors = correctedFrame.getErrors();
+        mErrorCountTotal = correctedFrame.getErrorCountTotal();
         mFundamentalFrequency = IMBEFundamentalFrequency.fromValue(mFrame.getInt(VECTOR_B0));
     }
 
@@ -143,35 +124,6 @@ public class IMBEFrame
     public BinaryFrame getFrame()
     {
         return mFrame;
-    }
-
-    /**
-     * Removes randomizer by generating a pseudo-random noise sequence from the first 12 bits of coset word c0 and
-     * applies (xor) that sequence against message coset words c1 through c6.
-     */
-    private void derandomize()
-    {
-        /* Set the offset to the first seed bit plus 23 to point to coset c1 */
-        int offset = 23;
-
-        /* Get seed value from first 12 bits of coset c0 */
-        int seed = mFrame.getInt(RANDOMIZER_SEED);
-
-        //alg 52
-        int prX = 16 * seed;
-
-        for(int x = 0; x < 114; x++)
-        {
-            //Alg 53 - simplified [... - 65536 * floor((173 * pr(n-1) + 13849) / 65536)] to modulus operation
-            prX = (173 * prX + 13849) % 65536;
-
-            //Alg 54 - values 32768 and above are a 1 and below is a 0 (default)
-            if(prX >= 32768)
-            {
-                //This is the same as xor
-                mFrame.flip(x + offset);
-            }
-        }
     }
 
     /**

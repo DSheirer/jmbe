@@ -1,4 +1,4 @@
-package jmbe.codec.imbe;
+package jmbe.frame;
 
 import jmbe.binary.BinaryFrame;
 
