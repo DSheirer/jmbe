@@ -30,7 +30,7 @@ import java.util.Arrays;
  * AMBE 3600 (2450 bps data and 1150 bps FEC) voice frame split into vectors c0 through c3, with c0 error checked and
  * corrected, and c1 descrambled, error checked and corrected.  Vectors c2 and c3 are not error protected.
  */
-public class CorrectedAMBEFrame
+public class CorrectedAMBEFrame implements ICorrectedFrame
 {
     /**
      * Length of an AMBE voice frame in bytes (72 bits).
@@ -171,9 +171,19 @@ public class CorrectedAMBEFrame
     /**
      * Error counts for vectors c0 and c1.
      */
+    @Override
     public int[] getErrors()
     {
         return mErrors;
+    }
+
+    /**
+     * Sum of the error counts for vectors c0 and c1.
+     */
+    @Override
+    public int getErrorCountTotal()
+    {
+        return mErrors[0] + mErrors[1];
     }
 
     @Override

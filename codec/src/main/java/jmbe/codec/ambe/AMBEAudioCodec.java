@@ -69,8 +69,19 @@ public class AMBEAudioCodec implements IAudioCodec
     @Override
     public IAudioWithMetadata getAudioWithMetadata(byte[] frameData)
     {
-        AMBEFrame frame = new AMBEFrame(frameData);
-        AudioWithMetadata audioWithMetadata = AudioWithMetadata.create(getAudio(frameData));
+        return getAudioWithMetadata(new AMBEFrame(frameData));
+    }
+
+    /**
+     * Converts the AMBE frame into PCM audio samples at 8kHz 16-bit rate and includes metadata about any tone(s)
+     * contained in the frame.
+     *
+     * @param frame to convert
+     * @return decoded audio and any associated metadata such as tones or dtmf/knox codes
+     */
+    protected IAudioWithMetadata getAudioWithMetadata(AMBEFrame frame)
+    {
+        AudioWithMetadata audioWithMetadata = AudioWithMetadata.create(getAudio(frame));
 
         if(frame.getFrameType() == FrameType.TONE)
         {

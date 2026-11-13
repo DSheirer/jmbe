@@ -30,7 +30,7 @@ import java.util.Arrays;
  * IMBE 4400 bps (2800 bps data and 1600 bps FEC) voice frame after deinterleaving, error detection and correction,
  * and removal of the randomizer from coset words c1 through c6.
  */
-public class CorrectedIMBEFrame
+public class CorrectedIMBEFrame implements ICorrectedFrame
 {
     /**
      * Length of an IMBE voice frame in bytes (144 bits).
@@ -129,6 +129,7 @@ public class CorrectedIMBEFrame
      * more errors than can be corrected.  A Hamming(15,11) word (c4 - c6) value of 2 indicates two or more errors
      * that were detected but not corrected.
      */
+    @Override
     public int[] getErrors()
     {
         return mErrors;
@@ -137,6 +138,7 @@ public class CorrectedIMBEFrame
     /**
      * Sum of the error counts for coset words c0 through c6.
      */
+    @Override
     public int getErrorCountTotal()
     {
         return mErrorCountTotal;
