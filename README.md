@@ -79,6 +79,18 @@ LINUX:
 		IAudioCodec audioCodec = library.getAudioConverter("AMBE");
 		IAudioWithMetadata convertedAudio = audioCodec.getAudioWithMetadata(byte[] ambeFrameData);
 
+* To error correct frames in the host application (for example, to use the error counts) and convert them without the
+library repeating the error correction, load **jmbe.JMBEAudioLibraryV3** as an **IAudioCodecLibraryV3**:
+
+		CorrectedIMBEFrame imbeFrame = CorrectedIMBEFrame.correct(byte[] imbeFrameData);
+		int c0Errors = imbeFrame.getErrors()[0];
+		IAudioCodecV3 imbeCodec = library.getAudioConverterV3("IMBE");
+		float[] convertedAudio = imbeCodec.getAudio(imbeFrame);
+
+		CorrectedAMBEFrame ambeFrame = CorrectedAMBEFrame.correct(byte[] ambeFrameData);
+		IAudioCodecV3 ambeCodec = library.getAudioConverterV3("AMBE 3600 x 2450");
+		IAudioWithMetadata convertedAudio = ambeCodec.getAudioWithMetadata(ambeFrame);
+
 # Creating Legacy JMBE Library (Versions prior to 1.0.7)
 # Preparing to Compile the Library From Source Code
 
