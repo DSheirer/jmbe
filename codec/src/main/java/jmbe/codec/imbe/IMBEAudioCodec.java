@@ -45,7 +45,14 @@ public class IMBEAudioCodec implements IAudioCodec
      */
     public float[] getAudio(byte[] frameData)
     {
-        IMBEFrame frame = new IMBEFrame(frameData);
+        return getAudio(new IMBEFrame(frameData));
+    }
+
+    /**
+     * Converts the imbe frame into PCM audio samples at 8kHz 16-bit rate
+     */
+    public float[] getAudio(IMBEFrame frame)
+    {
         return mSynthesizer.getAudio(frame);
     }
 
@@ -60,8 +67,7 @@ public class IMBEAudioCodec implements IAudioCodec
     @Override
     public IAudioWithMetadata getAudioWithMetadata(byte[] frameData)
     {
-        IMBEFrame frame = new IMBEFrame(frameData);
-        return AudioWithoutMetadata.create(mSynthesizer.getAudio(frame));
+        return AudioWithoutMetadata.create(getAudio(frameData));
     }
 
     /**

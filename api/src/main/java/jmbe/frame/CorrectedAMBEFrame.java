@@ -30,7 +30,7 @@ import java.util.Arrays;
  * AMBE 3600 (2450 bps data and 1150 bps FEC) voice frame split into vectors c0 through c3, with c0 error checked and
  * corrected, and c1 descrambled, error checked and corrected.  Vectors c2 and c3 are not error protected.
  */
-public class CorrectedAMBEFrame
+public class CorrectedAMBEFrame implements ICorrectedFrame
 {
     /**
      * Length of an AMBE voice frame in bytes (72 bits).
@@ -77,8 +77,7 @@ public class CorrectedAMBEFrame
     {
         //Error check C0, then descramble and error check C1
         mErrors[0] = Golay24.checkAndCorrect(mC0, 0);
-        BinaryFrame modulationVector = getModulationVector(mC0.getInt(VECTOR_U0));
-        mC1.xor(modulationVector);
+        MBEScrambler.descramble(mC1, mC0.getInt(VECTOR_U0), 0, 23);
         mErrors[1] = Golay23.checkAndCorrect(mC1, 0);
     }
 
@@ -106,34 +105,6 @@ public class CorrectedAMBEFrame
         }
 
         return vector;
-    }
-
-    /**
-     * Generates the bit modulation vector that is xor'd to vector C1 using U0 as the seed.
-     *
-     * @param seed for the modulation vector
-     * @return modulation vector bit sequence to descramble vector C1
-     */
-    private static BinaryFrame getModulationVector(int seed)
-    {
-        BinaryFrame modulationVector = new BinaryFrame(23);
-
-        //alg 52
-        int prX = 16 * seed;
-
-        for(int x = 0; x < 23; x++)
-        {
-            //alg 53 - simplified [... - 65536 * floor((173 * pr(n-1) + 13849) / 65536)] to modulus operation
-            prX = (173 * prX + 13849) % 65536;
-
-            //alg 54 - values 32768 and above are a 1 and below is a 0 (default)
-            if(prX >= 32768)
-            {
-                modulationVector.set(x);
-            }
-        }
-
-        return modulationVector;
     }
 
     /**
@@ -171,9 +142,19 @@ public class CorrectedAMBEFrame
     /**
      * Error counts for vectors c0 and c1.
      */
+    @Override
     public int[] getErrors()
     {
         return mErrors;
+    }
+
+    /**
+     * Sum of the error counts for vectors c0 and c1.
+     */
+    @Override
+    public int getErrorCountTotal()
+    {
+        return mErrors[0] + mErrors[1];
     }
 
     @Override

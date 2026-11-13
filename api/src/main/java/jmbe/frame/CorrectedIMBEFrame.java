@@ -30,7 +30,7 @@ import java.util.Arrays;
  * IMBE 4400 bps (2800 bps data and 1600 bps FEC) voice frame after deinterleaving, error detection and correction,
  * and removal of the randomizer from coset words c1 through c6.
  */
-public class CorrectedIMBEFrame
+public class CorrectedIMBEFrame implements ICorrectedFrame
 {
     /**
      * Length of an IMBE voice frame in bytes (144 bits).
@@ -41,7 +41,6 @@ public class CorrectedIMBEFrame
 
     private final BinaryFrame mFrame;
     private final int[] mErrors = new int[7];
-    private int mErrorCountTotal;
 
     private CorrectedIMBEFrame(BinaryFrame frame)
     {
@@ -67,52 +66,16 @@ public class CorrectedIMBEFrame
         IMBEInterleave.deinterleave(mFrame);
 
         mErrors[0] = Golay23.checkAndCorrect(mFrame, 0);
-        mErrorCountTotal += mErrors[0];
 
-        derandomize();
+        //Remove the randomizer from coset words c1 - c6 (bits 23 - 136) using the first 12 bits of c0 as the seed
+        MBEScrambler.descramble(mFrame, mFrame.getInt(RANDOMIZER_SEED), 23, 114);
 
         mErrors[1] = Golay23.checkAndCorrect(mFrame, 23);
-        mErrorCountTotal += mErrors[1];
-
         mErrors[2] = Golay23.checkAndCorrect(mFrame, 46);
-        mErrorCountTotal += mErrors[2];
         mErrors[3] = Golay23.checkAndCorrect(mFrame, 69);
-        mErrorCountTotal += mErrors[3];
         mErrors[4] = Hamming15.checkAndCorrect(mFrame, 92);
-        mErrorCountTotal += mErrors[4];
         mErrors[5] = Hamming15.checkAndCorrect(mFrame, 107);
-        mErrorCountTotal += mErrors[5];
         mErrors[6] = Hamming15.checkAndCorrect(mFrame, 122);
-        mErrorCountTotal += mErrors[6];
-    }
-
-    /**
-     * Removes randomizer by generating a pseudo-random noise sequence from the first 12 bits of coset word c0 and
-     * applies (xor) that sequence against message coset words c1 through c6.
-     */
-    private void derandomize()
-    {
-        /* Set the offset to the first seed bit plus 23 to point to coset c1 */
-        int offset = 23;
-
-        /* Get seed value from first 12 bits of coset c0 */
-        int seed = mFrame.getInt(RANDOMIZER_SEED);
-
-        //alg 52
-        int prX = 16 * seed;
-
-        for(int x = 0; x < 114; x++)
-        {
-            //Alg 53 - simplified [... - 65536 * floor((173 * pr(n-1) + 13849) / 65536)] to modulus operation
-            prX = (173 * prX + 13849) % 65536;
-
-            //Alg 54 - values 32768 and above are a 1 and below is a 0 (default)
-            if(prX >= 32768)
-            {
-                //This is the same as xor
-                mFrame.flip(x + offset);
-            }
-        }
     }
 
     /**
@@ -129,6 +92,7 @@ public class CorrectedIMBEFrame
      * more errors than can be corrected.  A Hamming(15,11) word (c4 - c6) value of 2 indicates two or more errors
      * that were detected but not corrected.
      */
+    @Override
     public int[] getErrors()
     {
         return mErrors;
@@ -137,9 +101,17 @@ public class CorrectedIMBEFrame
     /**
      * Sum of the error counts for coset words c0 through c6.
      */
+    @Override
     public int getErrorCountTotal()
     {
-        return mErrorCountTotal;
+        int total = 0;
+
+        for(int errors : mErrors)
+        {
+            total += errors;
+        }
+
+        return total;
     }
 
     @Override
