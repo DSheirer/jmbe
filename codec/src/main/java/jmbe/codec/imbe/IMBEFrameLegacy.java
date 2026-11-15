@@ -22,6 +22,7 @@ package jmbe.codec.imbe;
 import jmbe.binary.BinaryFrame;
 import jmbe.edac.Golay23;
 import jmbe.edac.Hamming15;
+import jmbe.frame.IMBEInterleave;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

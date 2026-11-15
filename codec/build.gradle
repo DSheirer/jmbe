@@ -25,6 +25,12 @@ jar {
     }
     from rootProject.file('LICENSE')
 
+    //Bundle the frame and error correction classes so that the library also runs in host applications built against
+    //an older api that doesn't include them.  The jmbe.iface interfaces must always come from the host application.
+    from(project(':api').sourceSets.main.output) {
+        exclude 'jmbe/iface/**'
+    }
+
     doLast {
         if(archiveFile.get().asFile.exists())
         {

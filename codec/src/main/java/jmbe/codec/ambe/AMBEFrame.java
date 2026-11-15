@@ -24,12 +24,10 @@ import jmbe.codec.FrameType;
 import jmbe.codec.ambe.ambePlus2.FundamentalFrequency;
 import jmbe.codec.ambe.tone.Tone;
 import jmbe.codec.ambe.tone.ToneParameters;
-import jmbe.edac.Golay23;
-import jmbe.edac.Golay24;
+import jmbe.frame.CorrectedAMBEFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteOrder;
 import java.util.Arrays;
 
 /**
@@ -39,13 +37,6 @@ public class AMBEFrame
 {
     private final static Logger mLog = LoggerFactory.getLogger(AMBEFrame.class);
 
-    private static final int[] VECTOR_C0 = {0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 1, 5,
-        9, 13, 17, 21};
-    private static final int[] VECTOR_C1 = {25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 2, 6, 10, 14, 18, 22, 26,
-        30, 34, 38, 42};
-    private static final int[] VECTOR_C2 = {46, 50, 54, 58, 62, 66, 70, 3, 7, 11, 15};
-    private static final int[] VECTOR_C3 = {19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63, 67, 71};
-    private static final int[] VECTOR_U0 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
     private static final int[] VECTOR_U0_TONE_CHECK = {0, 1, 2, 3, 4, 5};
     private static final int[] VECTOR_U3_TONE_CHECK = {10, 11, 12, 13};
     private static final int[] VECTOR_U0_B0_HIGH = {0, 1, 2, 3};
@@ -82,10 +73,9 @@ public class AMBEFrame
     private static final int U0_TONE_FRAME_VALUE = 63;
     private static final int U3_TONE_FRAME_VALUE = 0;
 
-    private final BinaryFrame mFrame;
     private FundamentalFrequency mFundamentalFrequency;
     private FrameType mFrameType;
-    private final int[] mErrors = new int[2];
+    private final int[] mErrors;
     private Tone mTone;
     private int mToneAmplitude;
     private int[] mB;
@@ -97,8 +87,18 @@ public class AMBEFrame
      */
     public AMBEFrame(byte[] frame)
     {
-        mFrame = BinaryFrame.fromBytes(frame, ByteOrder.LITTLE_ENDIAN);
-        decode();
+        this(CorrectedAMBEFrame.correct(frame));
+    }
+
+    /**
+     * Constructs an AMBE voice or tone frame from a frame that has already been error corrected.
+     *
+     * @param correctedFrame with error corrected vectors c0 and c1
+     */
+    public AMBEFrame(CorrectedAMBEFrame correctedFrame)
+    {
+        mErrors = correctedFrame.getErrors();
+        decode(correctedFrame);
     }
 
     /**
@@ -108,31 +108,30 @@ public class AMBEFrame
      */
     AMBEFrame(String hexString)
     {
+        this(fromHex(hexString));
+    }
+
+    private static byte[] fromHex(String hexString)
+    {
         byte[] data = new byte[hexString.length() / 2];
         for(int x = 0; x < hexString.length(); x += 2)
         {
             data[x / 2] = (byte)(0xFF & Integer.parseInt(hexString.substring(x, x + 2), 16));
         }
 
-        mFrame = BinaryFrame.fromBytes(data, ByteOrder.LITTLE_ENDIAN);
-        decode();
+        return data;
     }
 
     /**
      * Decodes the AMBE frame parameters
      */
-    private void decode()
+    private void decode(CorrectedAMBEFrame correctedFrame)
     {
-        BinaryFrame vectorC0 = getVector(VECTOR_C0);
-        BinaryFrame vectorC1 = getVector(VECTOR_C1);
-        BinaryFrame vectorC2 = getVector(VECTOR_C2);
-        BinaryFrame vectorC3 = getVector(VECTOR_C3);
+        BinaryFrame vectorC0 = correctedFrame.getC0();
+        BinaryFrame vectorC1 = correctedFrame.getC1();
+        BinaryFrame vectorC2 = correctedFrame.getC2();
+        BinaryFrame vectorC3 = correctedFrame.getC3();
 
-        //Error check C0, then descramble and error check C1
-        mErrors[0] = Golay24.checkAndCorrect(vectorC0, 0);
-        BinaryFrame modulationVector = getModulationVector(vectorC0.getInt(VECTOR_U0));
-        vectorC1.xor(modulationVector);
-        mErrors[1] = Golay23.checkAndCorrect(vectorC1, 0);
         int b0 = (vectorC0.getInt(VECTOR_U0_B0_HIGH) << 3) + vectorC3.getInt(VECTOR_U3_B0_LOW);
         int errorCount = mErrors[0] + mErrors[1];
 
@@ -273,59 +272,6 @@ public class AMBEFrame
         }
 
         throw new IllegalStateException("Frame type [" + getFrameType() + "] does not provide tone model parameters");
-    }
-
-    /**
-     * Extracts a bit vector from the underlying voice frame byte array
-     *
-     * @param indexes to extract for the vector
-     * @return binary frame vector
-     */
-    private BinaryFrame getVector(int[] indexes)
-    {
-        BinaryFrame vector = new BinaryFrame(indexes.length);
-
-        int pointer = 0;
-
-        for(int bit : indexes)
-        {
-            if(mFrame.get(bit))
-            {
-                vector.set(pointer);
-            }
-
-            pointer++;
-        }
-
-        return vector;
-    }
-
-    /**
-     * Generates the bit modulation vector that is xor'd to vector C1 using U0 as the seed.
-     *
-     * @param seed for the modulation vector
-     * @return modulation vector bit sequence to descramble vector C1
-     */
-    private static BinaryFrame getModulationVector(int seed)
-    {
-        BinaryFrame modulationVector = new BinaryFrame(23);
-
-        //alg 52
-        int prX = 16 * seed;
-
-        for(int x = 0; x < 23; x++)
-        {
-            //alg 53 - simplified [... - 65536 * floor((173 * pr(n-1) + 13849) / 65536)] to modulus operation
-            prX = (173 * prX + 13849) % 65536;
-
-            //alg 54 - values 32768 and above are a 1 and below is a 0 (default)
-            if(prX >= 32768)
-            {
-                modulationVector.set(x);
-            }
-        }
-
-        return modulationVector;
     }
 
     @Override

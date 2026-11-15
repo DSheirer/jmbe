@@ -291,15 +291,16 @@ public class Creator
     }
 
     /**
-     * Indicates if the zip entry is a compilable file for the codec or interface java classes
+     * Indicates if the zip entry is a compilable file for the codec or api java classes
      *
      * @param zipEntry to inspect
-     * @return true if the file is part of the interfaces or codec package and is a java file.
+     * @return true if the file is part of the api module or codec package and is a java file.
      */
     public static boolean isCompilable(ZipEntry zipEntry)
     {
         String name = zipEntry.getName();
-        return name.endsWith(".java") && (name.contains("iface") || name.contains("codec"));
+        return name.endsWith(".java") && (name.contains("iface") || name.contains("codec") ||
+            name.contains("api/src/main/java/"));
     }
 
     /**
