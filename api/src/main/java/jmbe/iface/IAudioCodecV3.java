@@ -23,8 +23,8 @@ import jmbe.frame.ICorrectedFrame;
 
 /**
  * Audio codec that can also synthesize audio from frames that the host application has already error corrected using
- * CorrectedIMBEFrame (IMBE codec) or CorrectedAMBEFrame (AMBE codec), so that the codec doesn't repeat the error
- * detection and correction.
+ * CorrectedIMBEFrame (IMBE codec), CorrectedAMBEFrame (AMBE codec) or CorrectedProVoiceFrame (PROVOICE codec), so
+ * that the codec doesn't repeat the error detection and correction.
  */
 public interface IAudioCodecV3 extends IAudioCodecV2
 {
