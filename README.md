@@ -2,6 +2,12 @@ Copyright (C) 2015-2020 Dennis Sheirer
 
 # jmbe - Java Multi-Band Excitation library
 
+[![Release](https://github.com/DSheirer/jmbe/actions/workflows/release.yml/badge.svg)](https://github.com/DSheirer/jmbe/actions/workflows/release.yml)
+[![Nightly](https://github.com/DSheirer/jmbe/actions/workflows/nightly.yml/badge.svg?branch=master)](https://github.com/DSheirer/jmbe/releases/tag/nightly)
+[![Latest Release](https://img.shields.io/github/v/release/DSheirer/jmbe?label=latest)](https://github.com/DSheirer/jmbe/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/DSheirer/jmbe/total)](https://github.com/DSheirer/jmbe/releases)
+[![License: GPL v3](https://img.shields.io/github/license/DSheirer/jmbe)](LICENSE)
+
 Audio conversion library for decoding MBE encoded audio frames.
   
 Decodes IMBE 144-bit and AMBE 72-bit encoded 20 millisecond audio frames to 8 kHz 16-bit mono PCM encoded audio.

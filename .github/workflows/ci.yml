@@ -1,0 +1,18 @@
+# Builds and tests pull requests. Nothing is published, so pull requests from
+# forks run with read-only access.
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml

@@ -1,0 +1,101 @@
+# Publishes a release when a version tag is pushed. The tag has to match the
+# version in build.gradle: v3.0.1 for a release, or v3.0.1-rc1 for a
+# pre-release. The JMBE Creator only picks up plain vX.Y.Z tags, so
+# pre-releases never reach end users through it.
+#
+# Run it by hand (Actions > Release > Run workflow) to publish a tag that was
+# pushed before this workflow existed, or to finish a failed run.
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to publish, e.g. v3.0.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - id: version
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG doesn't exist"
+            exit 1
+          fi
+          # Accept both the current "findProperty(...) ?: 'x'" form and the
+          # older "version = 'x'" form, so tags made before this workflow work.
+          base="$(sed -nE "s/^ *version = (findProperty\('jmbeVersion'\) \?: )?'([^']+)'.*/\2/p" build.gradle | head -1)"
+          case "$TAG" in
+            "v$base" | "v$base"-*) ;;
+            *)
+              echo "::error::Tag $TAG doesn't match version $base in build.gradle"
+              exit 1
+              ;;
+          esac
+          {
+            echo "tag=$TAG"
+            echo "version=${TAG#v}"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      ref: refs/tags/${{ needs.prepare.outputs.tag }}
+
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-files
+          path: dist
+
+      # Publishing is split into steps that can all be repeated, so a failed
+      # upload or a re-run finishes the draft left behind rather than failing on
+      # it: gh retries uploads, and a retry of an upload that had in fact
+      # succeeded fails with "ReleaseAsset.name already exists" unless clobbering.
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          (cd dist && sha256sum * > SHA256SUMS)
+          prerelease=()
+          if [[ "$TAG" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          if gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null | grep -qx false; then
+            echo "::error::Release $TAG is already published"
+            exit 1
+          elif gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Reusing the draft release $TAG"
+          else
+            gh release create "$TAG" --draft "${prerelease[@]}" \
+              --verify-tag --generate-notes --title "JMBE $VERSION"
+          fi
+          gh release upload "$TAG" dist/* --clobber
+          gh release edit "$TAG" --draft=false
