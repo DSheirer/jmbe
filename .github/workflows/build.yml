@@ -1,0 +1,76 @@
+# Builds and tests the library, then packages the JMBE Creator for every
+# platform. The Creator images bundle Liberica JDK 17 runtimes (see
+# creator/build.gradle), and jlink has to come from that same JDK release, so
+# the build runs on Liberica 17. Called by the ci, nightly and release workflows.
+#
+# Only the Creator and the api jar are published, never the compiled codec
+# jar: the Creator downloads the source of the latest release and compiles the
+# library on the user's computer (see the patent notice in README.md).
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version of the build; empty uses the version in build.gradle
+        required: false
+        type: string
+        default: ''
+      ref:
+        description: Git ref to build; empty uses the ref that triggered the workflow
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: liberica
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build, test and package the Creator
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          args=()
+          if [ -n "$VERSION" ]; then
+            args=(-PjmbeVersion="$VERSION")
+          fi
+          ./gradlew build :creator:runtimeZip --console=plain "${args[@]}"
+
+      - name: Collect the release files
+        run: |
+          mkdir dist
+          cp creator/build/image/jmbe-creator-*.zip dist/
+          cp api/build/libs/jmbe-api-*.jar dist/
+          ls -l dist
+          zips="$(ls dist/jmbe-creator-*.zip | wc -l)"
+          if [ "$zips" -ne 9 ]; then
+            echo "::error::Expected 9 Creator zips, found $zips"
+            exit 1
+          fi
+          jars="$(ls dist/jmbe-api-*.jar | wc -l)"
+          if [ "$jars" -ne 1 ]; then
+            echo "::error::Expected 1 api jar, found $jars"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-files
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
