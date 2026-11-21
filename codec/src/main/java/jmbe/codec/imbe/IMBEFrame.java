@@ -21,6 +21,7 @@ package jmbe.codec.imbe;
 
 import jmbe.binary.BinaryFrame;
 import jmbe.frame.CorrectedIMBEFrame;
+import jmbe.frame.CorrectedProVoiceFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,9 +82,30 @@ public class IMBEFrame
      */
     public IMBEFrame(CorrectedIMBEFrame correctedFrame)
     {
-        mFrame = correctedFrame.getFrame();
-        mErrors = correctedFrame.getErrors();
-        mErrorCountTotal = correctedFrame.getErrorCountTotal();
+        this(correctedFrame.getFrame(), correctedFrame.getErrors(), correctedFrame.getErrorCountTotal());
+    }
+
+    /**
+     * Constructs an IMBE frame from an EDACS ProVoice IMBE 7100 frame that has already been error corrected,
+     * derandomized and reordered into the IMBE 4400 parameter layout.
+     */
+    public IMBEFrame(CorrectedProVoiceFrame correctedFrame)
+    {
+        this(correctedFrame.getFrame(), correctedFrame.getErrors(), correctedFrame.getErrorCountTotal());
+    }
+
+    /**
+     * Constructs an IMBE frame from a corrected 144-bit frame in the IMBE 4400 coset layout.
+     *
+     * @param frame corrected frame
+     * @param errors counts for coset words c0 through c6
+     * @param errorCountTotal sum of the error counts
+     */
+    private IMBEFrame(BinaryFrame frame, int[] errors, int errorCountTotal)
+    {
+        mFrame = frame;
+        mErrors = errors;
+        mErrorCountTotal = errorCountTotal;
         mFundamentalFrequency = IMBEFundamentalFrequency.fromValue(mFrame.getInt(VECTOR_B0));
     }
 

@@ -23,6 +23,8 @@ import jmbe.codec.ambe.AMBEAudioCodec;
 import jmbe.codec.ambe.AMBEAudioCodecV3;
 import jmbe.codec.imbe.IMBEAudioCodec;
 import jmbe.codec.imbe.IMBEAudioCodecV3;
+import jmbe.codec.imbe.ProVoiceIMBEAudioCodec;
+import jmbe.codec.imbe.ProVoiceIMBEAudioCodecV3;
 import jmbe.iface.IAudioCodecLibraryV3;
 import jmbe.iface.IAudioCodecV3;
 
@@ -44,6 +46,8 @@ public class JMBEAudioLibraryV3 extends JMBEAudioLibraryV2 implements IAudioCode
                 return new IMBEAudioCodecV3();
             case AMBEAudioCodec.CODEC_NAME:
                 return new AMBEAudioCodecV3();
+            case ProVoiceIMBEAudioCodec.CODEC_NAME:
+                return new ProVoiceIMBEAudioCodecV3();
             default:
                 throw new IllegalArgumentException("Unsupported CODEC:" + (codec != null ? codec : "(null)"));
         }

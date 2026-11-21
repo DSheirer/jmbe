@@ -69,6 +69,11 @@ LINUX:
 		IAudioCodec audioCodec = library.getAudioConverter("IMBE");
 		float[] convertedAudio = audioCodec.getAudio(byte[] imbeFrameData);
 
+* To convert 21-byte EDACS ProVoice IMBE 7100 audio frames (one 7x24 bit grid, packed row-major, MSB first):
+
+		IAudioCodec audioCodec = library.getAudioConverter("PROVOICE");
+		float[] convertedAudio = audioCodec.getAudio(byte[] proVoiceFrameData);
+
 * To convert 9-byte AMBE audio and tone frames:
 
 		IAudioCodec audioCodec = library.getAudioConverter("AMBE");
@@ -90,6 +95,10 @@ library repeating the error correction, load **jmbe.JMBEAudioLibraryV3** as an *
 		CorrectedAMBEFrame ambeFrame = CorrectedAMBEFrame.correct(byte[] ambeFrameData);
 		IAudioCodecV3 ambeCodec = library.getAudioConverterV3("AMBE 3600 x 2450");
 		IAudioWithMetadata convertedAudio = ambeCodec.getAudioWithMetadata(ambeFrame);
+
+		CorrectedProVoiceFrame proVoiceFrame = CorrectedProVoiceFrame.correct(byte[] proVoiceFrameData);
+		IAudioCodecV3 proVoiceCodec = library.getAudioConverterV3("PROVOICE");
+		float[] convertedAudio = proVoiceCodec.getAudio(proVoiceFrame);
 
 # Creating Legacy JMBE Library (Versions prior to 1.0.7)
 # Preparing to Compile the Library From Source Code
