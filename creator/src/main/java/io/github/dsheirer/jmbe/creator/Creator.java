@@ -53,6 +53,13 @@ public class Creator
     private final static Logger mLog = LoggerFactory.getLogger(GitHub.class);
 
     private final static String GITHUB_JMBE_RELEASES_URL = "https://api.github.com/repos/dsheirer/jmbe/releases";
+    private final static String GITHUB_JMBE_ARCHIVE_URL = "https://github.com/DSheirer/jmbe/archive/";
+
+    /**
+     * Marker in a nightly build version (e.g. 3.0.1-nightly.20261121.fccd00c) that precedes the build date and the
+     * abbreviated commit hash.  See .github/workflows/nightly.yml
+     */
+    private final static String NIGHTLY_VERSION_MARKER = "-nightly.";
 
     /**
      * Exit code to indicate that the process completed successfully
@@ -406,7 +413,42 @@ public class Creator
     }
 
     /**
-     * Creates a JMBE library jar file from the lastest available source code.
+     * Version of this creator application, from the Implementation-Version entry of the creator jar manifest.
+     *
+     * @return version (e.g. 3.0.0, 3.0.1-rc1 or 3.0.1-nightly.20261121.fccd00c) or null when the creator isn't running
+     * from a packaged jar (e.g. from an IDE).
+     */
+    public static String getCreatorVersion()
+    {
+        Package creatorPackage = Creator.class.getPackage();
+        String version = creatorPackage != null ? creatorPackage.getImplementationVersion() : null;
+        return version == null || version.isBlank() ? null : version.trim();
+    }
+
+    /**
+     * Creates the GitHub URL for the source code zip archive that matches the specified creator version.  A release
+     * version (e.g. 3.0.0 or 3.0.1-rc1) maps to the source code of the matching tag (e.g. v3.0.0) and a nightly
+     * version (e.g. 3.0.1-nightly.20261121.fccd00c) maps to the source code of the commit it was built from.
+     *
+     * @param version of the creator
+     * @return source code zip archive URL
+     */
+    public static String getSourceCodeUrl(String version)
+    {
+        int nightly = version.indexOf(NIGHTLY_VERSION_MARKER);
+
+        if(nightly >= 0)
+        {
+            String commit = version.substring(version.lastIndexOf('.') + 1);
+            return GITHUB_JMBE_ARCHIVE_URL + commit + ".zip";
+        }
+
+        return GITHUB_JMBE_ARCHIVE_URL + "refs/tags/v" + version + ".zip";
+    }
+
+    /**
+     * Creates a JMBE library jar file from the source code that matches the version of this creator.  When the
+     * creator version can't be determined (e.g. running from an IDE), the latest release source code is used.
      *
      * @param libraryPath for the final library
      * @return an exit code to indicate success or failure
@@ -418,15 +460,34 @@ public class Creator
             System.out.println("Starting: JMBE Library Creator");
             Path temporaryDirectory = Files.createTempDirectory("jmbe-creator");
             System.out.println("Created: Temporary Directory [" + temporaryDirectory.toString() + "]");
-            Release latest = GitHub.getLatestRelease(GITHUB_JMBE_RELEASES_URL);
 
-            if(latest != null)
+            String version = getCreatorVersion();
+            String downloadUrl = null;
+
+            if(version != null)
+            {
+                System.out.println("Detected: Creator Version [" + version + "]");
+                downloadUrl = getSourceCodeUrl(version);
+            }
+            else
+            {
+                System.out.println("Unknown: Creator Version - Using Latest JMBE Release From GitHub");
+                Release latest = GitHub.getLatestRelease(GITHUB_JMBE_RELEASES_URL);
+
+                if(latest != null)
+                {
+                    version = latest.getVersion().toString();
+                    downloadUrl = latest.getDownloadUrl();
+                }
+            }
+
+            if(downloadUrl != null)
             {
                 Path library = null;
 
                 if(libraryPath == null)
                 {
-                    library = Path.of(System.getProperty("user.dir")).getParent().resolve(getJarName(latest.getVersion().toString()));
+                    library = Path.of(System.getProperty("user.dir")).getParent().resolve(getJarName(version));
                     System.out.println("Generated: Library Path [" + library.toString() + "]");
                 }
                 else
@@ -435,18 +496,17 @@ public class Creator
                     System.out.println("Specified: Library Path [" + library.toString() + "]");
                 }
 
-                System.out.println("Downloading: Source Code [Version " + latest.getVersion().toString() + "]");
-                Path download = GitHub.downloadReleaseSourceCode(latest, temporaryDirectory);
+                System.out.println("Downloading: Source Code [Version " + version + "]");
+                Path download = GitHub.downloadSourceCode(downloadUrl, temporaryDirectory);
 
                 if(download != null)
                 {
                     process(download);
                     System.out.println("Creating: JAR Metadata");
-                    createJarMetadata(getOutputDirectory(temporaryDirectory), latest.getVersion().toString());
+                    createJarMetadata(getOutputDirectory(temporaryDirectory), version);
                     System.out.println("Creating: JAR License File");
                     copyLicenseFile(temporaryDirectory);
                     Path sourceFiles = getOutputDirectory(temporaryDirectory);
-                    Path zip = temporaryDirectory.resolve(getJarName(latest.getVersion().toString()));
                     System.out.println("Creating: JMBE Library [" + library.toString() + "]");
                     createJar(sourceFiles, library);
                     System.out.println("Deleting: Temporary Directory [" + temporaryDirectory.toString() + "]");
@@ -467,7 +527,8 @@ public class Creator
                 }
                 else
                 {
-                    System.out.println("Failed: Couldn't download source code from GitHub.  Exiting.");
+                    System.out.println("Failed: Couldn't download the source code for version " + version +
+                        " from GitHub.  Exiting.");
                     return EXIT_CODE_NETWORK_ERROR;
                 }
             }

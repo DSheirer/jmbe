@@ -26,7 +26,7 @@ Note: this patent notice is verbatim from the mbelib library README at (https://
 # End Users: Creating the JMBE Library (Version 1.0.7+)
 ***YOU DO NOT HAVE TO INSTALL THE JAVA JDK.*** The instructions for creating the JMBE library have changed starting with version 1.0.7.
 
-1. Download the latest **JMBE Creator** for your operating system from the [Releases](https://github.com/DSheirer/jmbe/releases) page.
+1. Download the latest **JMBE Creator** for your operating system from the [Releases](https://github.com/DSheirer/jmbe/releases) page.  Each JMBE Creator builds the library version that matches its own release (e.g. JMBE Creator 3.0.0 builds JMBE library 3.0.0).
 2. Unzip the JMBE Creator
 3. Open a command/console window and run the JMBE Creator application
   * **Windows:**  (unzip directory)/bin/creator.bat

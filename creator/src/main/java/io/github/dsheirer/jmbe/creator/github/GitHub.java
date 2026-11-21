@@ -31,8 +31,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 
 /**
  * Utilities for accessing GitHub repositories and releases
@@ -40,6 +40,7 @@ import java.nio.file.StandardOpenOption;
 public class GitHub
 {
     private final static Logger mLog = LoggerFactory.getLogger(GitHub.class);
+    private final static String SOURCE_CODE_FILE_NAME = "jmbe-source.zip";
 
     private GitHub()
     {
@@ -54,19 +55,37 @@ public class GitHub
      */
     public static Path downloadReleaseSourceCode(Release release, Path directory)
     {
+        return downloadSourceCode(release.getDownloadUrl(), directory);
+    }
+
+    /**
+     * Download a source code zip archive to the specified directory.
+     * @param url of the zip archive
+     * @param directory to store the downloaded zip file
+     * @return path to the downloaded zip file or null if the download failed
+     */
+    public static Path downloadSourceCode(String url, Path directory)
+    {
         HttpClient client = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.ALWAYS)
             .build();
 
-        System.out.println("Downloading: " + release.getDownloadUrl());
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(release.getDownloadUrl())).build();
+        System.out.println("Downloading: " + url);
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
+        Path file = directory.resolve(SOURCE_CODE_FILE_NAME);
 
         try
         {
-            HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFileDownload(directory,
-                StandardOpenOption.CREATE, StandardOpenOption.WRITE));
-            System.out.println("Download Complete: HTTP Status " + response.statusCode());
-            return response.body();
+            HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFile(file));
+
+            if(response.statusCode() == 200)
+            {
+                System.out.println("Download Complete: HTTP Status " + response.statusCode());
+                return response.body();
+            }
+
+            System.out.println("Download Failed: HTTP Status " + response.statusCode() + " for " + url);
+            Files.deleteIfExists(file);
         }
         catch(Exception e)
         {

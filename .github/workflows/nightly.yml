@@ -1,9 +1,8 @@
 # Publishes the rolling "nightly" pre-release from master whenever a commit
 # lands there (for example, a merged pull request), or on demand.
 #
-# The JMBE Creator ignores this release when it looks for the latest version,
-# because the tag "nightly" isn't a version number. A nightly Creator therefore
-# still builds the library from the latest versioned release.
+# A nightly Creator downloads and compiles the source of the exact commit it was
+# built from (the commit hash at the end of its version), not the latest release.
 name: Nightly
 
 on:
@@ -67,7 +66,7 @@ jobs:
             --title "Nightly $VERSION" \
             --notes "Automated build of master. Not for production use.
 
-          The JMBE Creator builds the library from the latest versioned release, not from this nightly build.
+          The JMBE Creator in this release builds the library from the source of this same commit.
 
           Built from ${GITHUB_SHA}"
           gh release upload nightly dist/* --clobber
