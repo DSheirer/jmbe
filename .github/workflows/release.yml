@@ -1,7 +1,7 @@
 # Publishes a release when a version tag is pushed. The tag has to match the
 # version in build.gradle: v3.0.1 for a release, or v3.0.1-rc1 for a
-# pre-release. The JMBE Creator only picks up plain vX.Y.Z tags, so
-# pre-releases never reach end users through it.
+# pre-release. Each Creator downloads and compiles the source of the tag that
+# matches its own version, so a Creator and the library it builds always match.
 #
 # Run it by hand (Actions > Release > Run workflow) to publish a tag that was
 # pushed before this workflow existed, or to finish a failed run.

@@ -4,7 +4,7 @@
 # the build runs on Liberica 17. Called by the ci, nightly and release workflows.
 #
 # Only the Creator and the api jar are published, never the compiled codec
-# jar: the Creator downloads the source of the latest release and compiles the
+# jar: the Creator downloads the source matching its own version and compiles the
 # library on the user's computer (see the patent notice in README.md).
 name: Build
 
